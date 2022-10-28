@@ -77,7 +77,7 @@ Security layer resolve the secure between peer to peer trnasmission. It should b
 
 TEMP <br>
 
-Something<br>
+Packet<br>
 ```
 ┏---------------------┓
 | Label | Actual data |
@@ -87,14 +87,17 @@ Something<br>
 Label
 ```
 ┏--------------------------------------┓
-| Actual data size | Encrypt algorithm | 
+| Encrypt algorithm | Actual data size | 
 ┗--------------------------------------┛
 ```
+Encrypt alogrithm (1 byte)
+- 1: RSA-4096 (example)
+Actual data size (n byte == maybe max gossip message size?)
 
-PULL_REQUEST Packet
+PULL_REQUEST
 ```
 ```
 
-PULL_RESPONSE Packet
+PULL_RESPONSE
 ```
 ```
