@@ -1,0 +1,3 @@
+package gogossip
+
+// gossipNumber int
