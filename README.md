@@ -86,13 +86,19 @@ Packet<br>
 
 Label
 ```
-┏--------------------------------------┓
-| Encrypt algorithm | Actual data size | 
-┗--------------------------------------┛
+┏----------------------------------------------------------┓
+| Packet type| Encrypt algorithm | Actual data size (May?) | 
+┗----------------------------------------------------------┛
 ```
+Packet type (1 byte)
+- 1: PullRequest <br>
+- 2: PullResponse <br>
+
 Encrypt alogrithm (1 byte)
-- 1: RSA-4096 (example)
-Actual data size (n byte == maybe max gossip message size?)
+- 1: RSA-4096 (example) <br>
+
+Actual data size (4 byte); BigEndian ordered uint32 <br>
+This is not necessary unless you add a specific flag (eg checksum) after the data.
 
 PULL_REQUEST
 ```
