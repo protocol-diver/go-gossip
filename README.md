@@ -75,8 +75,6 @@ We need to find a suitable config values. <br>
 ## Transport/Security layer
 Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. The method of sharing the session key is not in mind. I'm just considering a method of encrypting and decrypting using a passphrase. <br>
 
-TEMP <br>
-
 Packet<br>
 ```
 ┏---------------------┓
@@ -90,12 +88,12 @@ Label
 | Packet type| Encrypt algorithm | Actual data size (May?) | 
 ┗----------------------------------------------------------┛
 ```
-Packet type (1 byte)
-- 1: PullRequest <br>
-- 2: PullResponse <br>
+Packet type (1 byte) <br>
+> 1: PullRequest <br>
+> 2: PullResponse <br>
 
-Encrypt alogrithm (1 byte)
-- 1: RSA-4096 (example) <br>
+Encrypt alogrithm (1 byte) <br>
+> 1: RSA-4096 (example) <br>
 
 Actual data size (4 byte); BigEndian ordered uint32 <br>
 This is not necessary unless you add a specific flag (eg checksum) after the data.
