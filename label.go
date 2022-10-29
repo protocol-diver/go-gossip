@@ -11,9 +11,12 @@ var (
 	// byte
 	packetTypeFlagSize = 1
 	encryptFlagSize    = 1 // binary.Size((EncryptType(0)))
+	actualDataFlagSize = 4 // uint32, This is not necessary unless you add a specific flag (eg checksum) after the data.
 
-	// uint32, This is not necessary unless you add a specific flag (eg checksum) after the data.
-	actualDataFlagSize = 4
+	// TODO: not good
+	packetTypeFlag = 0
+	encryptFlag    = packetTypeFlag + packetTypeFlagSize
+	actualDataFlag = encryptFlag + encryptFlagSize
 )
 
 func AddLabelFromPacket(packet Packet, encType EncryptType) ([]byte, error) {
@@ -29,11 +32,11 @@ func AddLabelFromPacket(packet Packet, encType EncryptType) ([]byte, error) {
 	label := make([]byte, packetTypeFlagSize+encryptFlagSize+actualDataFlagSize)
 
 	// packetTypeFlag, encryptFlag is always 1 byte.
-	label[packetTypeFlagSize] = packet.Kind()
-	label[encryptFlagSize] = byte(encType)
+	label[packetTypeFlag] = packet.Kind()
+	label[encryptFlag] = byte(encType)
 
 	// Use copy beacuase this process is size-sensitive.
-	copy(label[encryptFlagSize+1:actualDataFlagSize], sizeFlag)
+	copy(label[actualDataFlag:actualDataFlagSize], sizeFlag)
 
 	r := make([]byte, len(label)+packetSize)
 	copy(r, label)
@@ -45,16 +48,16 @@ func RemoveLabelFromPacket(d []byte) ([]byte, byte, EncryptType, error) {
 	if len(d) <= encryptFlagSize+actualDataFlagSize {
 		return nil, 0, 0, errors.New("too short")
 	}
-	sizeBuf := d[encryptFlagSize+1 : actualDataFlagSize]
+	sizeBuf := d[encryptFlag+1 : actualDataFlag]
 	size := binary.BigEndian.Uint32(sizeBuf)
 
 	// Logic to get postfix flag value . . .
 	//
 	//
-	data := d[actualDataFlagSize+1:]
+	data := d[actualDataFlag+1:]
 
-	packetType := d[packetTypeFlagSize]
-	encType := d[encryptFlagSize]
+	packetType := d[packetTypeFlag]
+	encType := d[encryptFlag]
 
 	if len(data) != int(size) {
 		return nil, 0, 0, fmt.Errorf("invalid size, label: %d, packet: %d", size, len(data))
