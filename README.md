@@ -70,6 +70,18 @@ There is three tasks what this layer have to do. <br>
 The gossip node needs two buffers: a buffer where the application program can receive gossip messages and a buffer to temporarily store it to propagate to other gossip nodes. <br>
 I decided to use the LRU cache for message temporary storage for propagation. Gossip messages that no longer propagate are likely not to be referenced by other nodes in the future. One thing to consider here is that the size of the cache should be much larger than the number of times a node can make PUSH requests. Otherwise, the cache will be replaced as soon as it starts propagate gossip messages. <br>
 We need to find a suitable config values. <br>
+<br>
+Gossip node: 10000, Gossip number: 2, Gossip interval: 200 ms <br> 
+
+<b>Gossip message store timeout</b> <br>
+If you want 5 m, The LRU cache size is 3000 <br>
+```
+1s = 10 gossip message in LRU cache
+60s = 600 ...
+5m = 3000 ...
+```
+
+
 
 
 ## Transport/Security layer
