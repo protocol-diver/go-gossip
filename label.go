@@ -19,6 +19,7 @@ var (
 	actualDataFlag = encryptFlag + encryptFlagSize
 )
 
+// Use bytes.Buffer ?
 func AddLabelFromPacket(packet Packet, encType EncryptType) ([]byte, error) {
 	bpacket, err := json.Marshal(packet)
 	if err != nil {
