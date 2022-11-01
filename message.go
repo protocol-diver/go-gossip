@@ -1,6 +1,8 @@
 package gogossip
 
 type Packet interface {
+	SetID([8]byte)
+	ID() [8]byte
 	Kind() byte
 }
 
@@ -10,10 +12,20 @@ const (
 )
 
 type (
-	PullRequest  struct{}
-	PullResponse struct{}
+	PullRequest struct {
+		id     [8]byte
+		Target [8]byte
+	}
+	PullResponse struct {
+		id   [8]byte
+		Data []byte
+	}
 )
 
-func (req *PullRequest) Kind() byte { return PullReqestType }
+func (req *PullRequest) SetID(id [8]byte) { req.id = id }
+func (req *PullRequest) ID() [8]byte      { return req.id }
+func (req *PullRequest) Kind() byte       { return PullReqestType }
 
-func (res *PullResponse) Kind() byte { return PullResponseType }
+func (res *PullResponse) SetID(id [8]byte) { res.id = id }
+func (res *PullResponse) ID() [8]byte      { return res.id }
+func (res *PullResponse) Kind() byte       { return PullResponseType }
