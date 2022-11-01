@@ -29,7 +29,7 @@ loop
 	
 	if taskType is 'PULL_REQ' then
 		sender, id = task
-		send(sender, UPDATE_RES, load(id))
+		send(sender, PULL_RES, load(id))
 	end if
 
 	if taskType is 'PULL_RES' then
