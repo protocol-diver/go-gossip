@@ -85,7 +85,7 @@ If you want 5 m, The LRU cache size is 3000 <br>
 
 
 ## Transport/Security layer
-Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. The method of sharing the session key is not in mind. I'm just considering a method of encrypting and decrypting using a passphrase. <br>
+Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. ~~The method of sharing the session key is not in mind~~(not sure...). I'm just considering a method of encrypting and decrypting using a passphrase. <br>
 
 Packet<br>
 ```
