@@ -46,17 +46,15 @@ func (g *Gossiper) handler(buf []byte) error {
 		if err := json.Unmarshal(payload, &msg); err != nil {
 			return err
 		}
-		if g.Exist(msg.ID()) {
+		value, ok := g.messageCache.Get(msg.ID())
+		if !ok {
 			_ = "skip"
 		}
+		_ = value
 		// 1. Select random peers
 		// 2. Make PullRequest
 		// 3. Encryption
 		// 4. Send
 	}
 	return fmt.Errorf("invalid packet type %d", packetType)
-}
-
-func (g *Gossiper) Exist(id [8]byte) bool {
-	return g.messageCache.Contains(id)
 }
