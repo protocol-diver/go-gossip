@@ -22,7 +22,7 @@ type (
 	}
 )
 
-func (req *PullRequest) SetID(id [8]byte) { req.id = id }
+func (req *PullRequest) SetID(id [8]byte) { panic("not supported") }
 func (req *PullRequest) ID() [8]byte      { return req.id }
 func (req *PullRequest) Kind() byte       { return PullReqestType }
 
