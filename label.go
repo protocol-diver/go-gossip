@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 )
 
 var (
@@ -64,4 +66,11 @@ func RemoveLabelFromPacket(d []byte) ([]byte, byte, EncryptType, error) {
 		return nil, 0, 0, fmt.Errorf("invalid size, label: %d, packet: %d", size, len(data))
 	}
 	return data, packetType, EncryptType(encType), nil
+}
+
+func idGenerator() [8]byte {
+	var buf [8]byte
+	random := rand.New(rand.NewSource(int64(time.Now().Nanosecond())))
+	random.Read(buf[:])
+	return buf
 }
