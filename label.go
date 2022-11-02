@@ -1,6 +1,7 @@
 package gogossip
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -9,19 +10,8 @@ import (
 	"time"
 )
 
-var (
-	// byte
-	packetTypeFlagSize = 1
-	encryptFlagSize    = 1 // binary.Size((EncryptType(0)))
-	actualDataFlagSize = 4 // uint32, This is not necessary unless you add a specific flag (eg checksum) after the data.
+// Label: packetType(1 byte) + encryptType(1 byte) + actualDataSize(4 byte)
 
-	// TODO: not good
-	packetTypeFlag = 0
-	encryptFlag    = packetTypeFlag + packetTypeFlagSize
-	actualDataFlag = encryptFlag + encryptFlagSize
-)
-
-// Use bytes.Buffer ?
 func AddLabelFromPacket(packet Packet, encType EncryptType) ([]byte, error) {
 	bpacket, err := json.Marshal(packet)
 	if err != nil {
@@ -29,42 +19,42 @@ func AddLabelFromPacket(packet Packet, encType EncryptType) ([]byte, error) {
 	}
 	packetSize := len(bpacket)
 
-	sizeFlag := make([]byte, actualDataFlagSize)
+	buf := bytes.NewBuffer(make([]byte, 0, 1+1+4+packetSize))
+
+	sizeFlag := make([]byte, 4)
 	binary.BigEndian.PutUint32(sizeFlag, uint32(packetSize))
 
-	label := make([]byte, packetTypeFlagSize+encryptFlagSize+actualDataFlagSize)
+	buf.WriteByte(packet.Kind())
+	buf.WriteByte(byte(encType))
+	buf.Write(sizeFlag)
+	buf.Write(bpacket)
 
-	// packetTypeFlag, encryptFlag is always 1 byte.
-	label[packetTypeFlag] = packet.Kind()
-	label[encryptFlag] = byte(encType)
-
-	// Use copy beacuase this process is size-sensitive.
-	copy(label[actualDataFlag:actualDataFlagSize], sizeFlag)
-
-	r := make([]byte, len(label)+packetSize)
-	copy(r, label)
-	r = append(r, bpacket...)
-	return r, nil
+	return buf.Bytes(), nil
 }
 
 func RemoveLabelFromPacket(d []byte) ([]byte, byte, EncryptType, error) {
-	if len(d) <= encryptFlagSize+actualDataFlagSize {
+	if len(d) <= 1+1+4 {
 		return nil, 0, 0, errors.New("too short")
 	}
-	sizeBuf := d[encryptFlag+1 : actualDataFlag]
+
+	buf := bytes.NewBuffer(d)
+
+	packetType, _ := buf.ReadByte()
+	encType, _ := buf.ReadByte()
+
+	sizeBuf := make([]byte, 4)
+	buf.Read(sizeBuf)
 	size := binary.BigEndian.Uint32(sizeBuf)
 
-	// Logic to get postfix flag value . . .
-	//
-	//
-	data := d[actualDataFlag+1:]
-
-	packetType := d[packetTypeFlag]
-	encType := d[encryptFlag]
-
-	if len(data) != int(size) {
-		return nil, 0, 0, fmt.Errorf("invalid size, label: %d, packet: %d", size, len(data))
+	data := make([]byte, size)
+	n, err := buf.Read(data)
+	if err != nil {
+		return nil, 0, 0, err
 	}
+	if n != int(size) {
+		return nil, 0, 0, fmt.Errorf("invalid size header: %d, payload: %d", size, n)
+	}
+
 	return data, packetType, EncryptType(encType), nil
 }
 
