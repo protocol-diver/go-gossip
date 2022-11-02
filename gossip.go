@@ -3,12 +3,20 @@ package gogossip
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 )
 
 type Gossiper struct {
+	latest map[string]time.Time
+
+	messagePipe  chan []byte
 	messageCache lru.Cache
+}
+
+func (g *Gossiper) Messages() chan []byte {
+	return g.messagePipe
 }
 
 func (g *Gossiper) handler(buf []byte) error {
@@ -16,8 +24,8 @@ func (g *Gossiper) handler(buf []byte) error {
 	if err != nil {
 		return err
 	}
-	//
-	_, _ = payload, encType
+	_ = encType
+
 	switch packetType {
 	case PullReqestType:
 		// 1. Payload decryption
@@ -28,14 +36,11 @@ func (g *Gossiper) handler(buf []byte) error {
 			return err
 		}
 		// 3. Checks requested data
-		value, ok := g.messageCache.Get(request.Target)
-		if !ok {
+		data := g.get(request.Target)
+		if data == nil {
 			_ = "skip"
 		}
-		data, ok := value.([]byte)
-		if !ok {
-			panic("critical error")
-		}
+
 		// 4. Build the message
 		msg := new(PullResponse)
 		msg.SetID(idGenerator())
@@ -46,9 +51,14 @@ func (g *Gossiper) handler(buf []byte) error {
 		if err := json.Unmarshal(payload, &msg); err != nil {
 			return err
 		}
-		value, ok := g.messageCache.Get(msg.ID())
-		if !ok {
+		value := g.get(msg.ID())
+		if value != nil {
 			_ = "skip"
+		}
+		// temp
+		if true {
+			g.messageCache.Add(msg.ID(), []byte{})
+			g.messagePipe <- []byte{}
 		}
 		_ = value
 		// 1. Select random peers
@@ -57,4 +67,12 @@ func (g *Gossiper) handler(buf []byte) error {
 		// 4. Send
 	}
 	return fmt.Errorf("invalid packet type %d", packetType)
+}
+
+func (g *Gossiper) get(id [8]byte) []byte {
+	v, ok := g.messageCache.Get(id)
+	if !ok {
+		return nil
+	}
+	return v.([]byte)
 }
