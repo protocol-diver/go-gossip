@@ -1,7 +1,8 @@
 package gogossip
 
 type Config struct {
-	passphrase string
+	encryptType EncryptType
+	passphrase  string
 }
 
 // gossipNumber int
