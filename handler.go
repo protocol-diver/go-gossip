@@ -41,7 +41,7 @@ func (g *Gossiper) pushMessageHandle(payload []byte, encType EncryptType, sender
 		g.messagePipe <- msg.Data
 	}()
 
-	response := PushAck{atomic.AddUint32(&g.seq, 1), idGenerator()}
+	response := PushAck{atomic.AddUint32(&g.seq, 1), msg.Key}
 
 	buf, err := AddLabelFromPacket(&response, encType)
 	if err != nil {
