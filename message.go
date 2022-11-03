@@ -1,8 +1,7 @@
 package gogossip
 
 type Packet interface {
-	SetID([8]byte)
-	ID() [8]byte
+	ID() uint32
 	Kind() byte
 }
 
@@ -16,30 +15,40 @@ const (
 
 type (
 	PushMessage struct {
-		id   [8]byte
+		id   uint32
+		Key  [8]byte
 		Data []byte
 	}
 	PushAck struct {
-		id [8]byte
+		id  uint32
+		Key [8]byte
 	}
 	PullSync struct {
-		id     [8]byte
-		Target uint
+		id     uint32
+		Target [8]byte
 	}
 	PullRequest struct {
-		id     [8]byte
-		Target uint
+		id     uint32
+		Target [8]byte
 	}
 	PullResponse struct {
-		id   [8]byte
-		Data []byte
+		id     uint32
+		Target [8]byte
+		Data   []byte
 	}
 )
 
-func (req *PullRequest) SetID(id [8]byte) { panic("not supported") }
-func (req *PullRequest) ID() [8]byte      { return req.id }
-func (req *PullRequest) Kind() byte       { return PullRequestType }
+func (p *PushMessage) ID() uint32 { return p.id }
+func (p *PushMessage) Kind() byte { return PullRequestType }
 
-func (res *PullResponse) SetID(id [8]byte) { res.id = id }
-func (res *PullResponse) ID() [8]byte      { return res.id }
-func (res *PullResponse) Kind() byte       { return PullResponseType }
+func (p *PushAck) ID() uint32 { return p.id }
+func (p *PushAck) Kind() byte { return PullRequestType }
+
+func (p *PullSync) ID() uint32 { return p.id }
+func (p *PullSync) Kind() byte { return PullRequestType }
+
+func (req *PullRequest) ID() uint32 { return req.id }
+func (req *PullRequest) Kind() byte { return PullRequestType }
+
+func (res *PullResponse) ID() uint32 { return res.id }
+func (res *PullResponse) Kind() byte { return PullResponseType }
