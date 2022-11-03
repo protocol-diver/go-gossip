@@ -25,7 +25,6 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 		g.pullResponseHandle(payload, encType)
 	}
 	// ("invalid packet type %d", packetType)
-	return
 }
 
 func (g *Gossiper) pushMessageHandle(payload []byte, encType EncryptType, sender *net.UDPAddr) {
@@ -38,6 +37,9 @@ func (g *Gossiper) pushMessageHandle(payload []byte, encType EncryptType, sender
 		return
 	}
 	g.messageCache.Add(msg.ID(), msg.Data)
+	go func() {
+		g.messagePipe <- msg.Data
+	}()
 
 	response := PushAck{atomic.AddUint32(&g.seq, 1), idGenerator()}
 
