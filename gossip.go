@@ -89,7 +89,7 @@ func (g *Gossiper) Push(buf []byte) {
 				ackCount++
 			}
 			if ackCount >= (GossipNumber / 2) {
-				// correctly finish
+				// correct finish
 				return
 			}
 		case <-timer.C:
