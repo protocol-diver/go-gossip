@@ -7,11 +7,13 @@ The point is that each node transmits data while periodically exchanging metadat
 In general, each node periodically performs health checks of other nodes and communicates with them, but this library relies on an externally imported discovery layer. <br>
 The gossip protocol is divided into two main categories: Push and Pull. If implemented as a push, it becomes inefficient if a large number of peers are already infected. If implemented as Pull, it will propagate efficiently, but there is a point to be concerned about because the message that needs to be propagated to the peer needs to be managed. <br>
 In this project, by properly mixing push and pull methods, it is possible to efficiently propagate even when a large number of peers are already infected, and the goal is to reduce the difficulty of managing messages that need to be propagated to other peers. <br>
-it works almost identically to the existing Push-based gossip protocol. It selects a set number of random peers for a new message and send the message. The difference here is that the peer that receives the 'Push' message sends an ACK message to the sender. <br>
+It works almost identically to the existing Push-based gossip protocol. It selects a set number of random peers for a new message and send the message. The difference here is that the peer that receives the 'Push' message sends an ACK message to the sender. <br>
 If the target peer does not operate normally, or if the message has already received before, does not send ACK message. <br>
 The sender collects the number of ACKs to see if it has received a majority of the number of messages it has sent. If a 'Push' message is sent to 3 random peers, the 'Push' process will correctly end only when two or more 'ACK' are received. <br>
-What if I didn't get more than a majority? <br>
-Suppose you sent a 'Push' message to 3 random peers, but only received 1 'ACK'. The sender adds a certain value to the previously established number of peers 3 and sends, for example, 'PullSync' to 5 peers. The message is sent with the id of the data the sender was trying to propagate. The peer receiving the 'PullSync' sends a 'Pull request' including the data ID to the sender of the message. Finally, the original sender peer sends a 'Pull response' containing the requested data, and then deletes the data from the memory. <br>
+
+> What if I didn't get more than a majority? <br>
+
+Suppose you sent a 'Push' message to 3 random peers, but only received 1 'ACK'. The sender adds a certain value to the previously set 3 and sends a 'PullSync' to 5 peers for example. The message is sent with the id of the data the sender was trying to propagate. The peer receiving the 'PullSync' sends a 'Pull request' including the data ID to the sender of the message. Finally, the original sender peer sends a 'Pull response' containing the requested data. <br>
 If implemented as above, the inefficiency of the push-based gossip protocol, which requires sending and receiving messages between already infected peers, and the hassle of managing data to respond to pull requests can be reduced. <br>
 
 Take a look at the list of supported features below. <br>
