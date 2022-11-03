@@ -1,7 +1,10 @@
 package gogossip
 
 import (
-	"fmt"
+	"net"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 )
@@ -15,55 +18,115 @@ const (
 )
 
 type Gossiper struct {
-	discovery Discovery
+	seq uint32
 
-	messagePipe  chan []byte
+	discovery Discovery
+	transport Transport
+
+	messagePipe chan []byte
+
+	ackChan map[[8]byte]chan Packet
+	ackMu   sync.Mutex
+
 	messageCache lru.Cache
 
 	cfg *Config
 }
 
-func (g *Gossiper) Push(data []byte) error {
-	return nil
+func (g *Gossiper) dispatch() {
+	for {
+		// Temp
+		buf := make([]byte, 0)
+		_, sender, err := g.transport.ReadFromUDP(buf)
+		if err != nil {
+			continue
+		}
+
+		go g.handler(buf, sender)
+	}
 }
 
-func (g *Gossiper) Messages() chan []byte {
+func (g *Gossiper) Push(buf []byte) {
+	id := idGenerator()
+	ch := make(chan Packet)
+	g.ackMu.Lock()
+	g.ackChan[id] = ch
+	g.ackMu.Unlock()
+
+	msg := PushMessage{atomic.AddUint32(&g.seq, 1), id, buf}
+
+	buf, err := AddLabelFromPacket(&msg, g.cfg.encryptType)
+	if err != nil {
+		// log
+		return
+	}
+
+	peers := g.SelectRandomPeers(GossipNumber)
+	for _, peer := range peers {
+		addr, err := net.ResolveUDPAddr("udp", peer)
+		if err != nil {
+			// log
+			continue
+		}
+		if _, err := g.transport.WriteToUDP(buf, addr); err != nil {
+			// log
+			continue
+		}
+	}
+
+	ackCount := 0
+	timer := time.NewTimer(300 * time.Millisecond)
+	defer timer.Stop()
+	for {
+		select {
+		case ackPacket := <-ch:
+			ack, ok := ackPacket.(*PushAck)
+			if !ok {
+				// log
+				continue
+			}
+			if ack.Key == id {
+				ackCount++
+			}
+			if ackCount >= (GossipNumber / 2) {
+				// correctly finish
+				return
+			}
+		case <-timer.C:
+			pullSync := PullSync{atomic.LoadUint32(&g.seq), id}
+
+			buf, err := AddLabelFromPacket(&pullSync, g.cfg.encryptType)
+			if err != nil {
+				// log
+				return
+			}
+
+			peers := g.SelectRandomPeers(GossipNumber * 2)
+			for _, peer := range peers {
+				addr, err := net.ResolveUDPAddr("udp", peer)
+				if err != nil {
+					// log
+					continue
+				}
+				if _, err := g.transport.WriteToUDP(buf, addr); err != nil {
+					// log
+					continue
+				}
+			}
+		}
+	}
+}
+
+func (g *Gossiper) MessagePipe() chan []byte {
 	return g.messagePipe
 }
 
-func (g *Gossiper) SelectRandomPeers() []string {
+func (g *Gossiper) SelectRandomPeers(n int) []string {
 	return nil
 }
 
-func (g *Gossiper) handler(buf []byte) error {
-	payload, packetType, encType, err := RemoveLabelFromPacket(buf)
-	if err != nil {
-		return err
-	}
-	_, _ = payload, encType
-
-	switch packetType {
-	case PushMessageType:
-		// 1. Store / Ignore if already exist
-		// 2. Store? -> Send PushAckType to sender
-	case PushAckType:
-		// 1. Counts number of ACK
-		// 2. Done or multicast PullSyncType
-	case PullSyncType:
-		// 1. Send PullRequest to sender
-	case PullRequestType:
-		// 1. Find requested data
-		// 2. Marshal and encryption
-		// 3. Make PullResponse
-		// 4. Send to requestor
-	case PullResponseType:
-		// 1. Store / Ignore if already exist
-	}
-	return fmt.Errorf("invalid packet type %d", packetType)
-}
-
-func (g *Gossiper) get(id uint) []byte {
-	v, ok := g.messageCache.Get(id)
+func (g *Gossiper) get(key [8]byte) []byte {
+	v, ok := g.messageCache.Get(key)
 	if !ok {
 		return nil
 	}
