@@ -132,3 +132,10 @@ func (g *Gossiper) get(key [8]byte) []byte {
 	}
 	return v.([]byte)
 }
+
+func (g *Gossiper) add(key [8]byte, value []byte) {
+	g.messageCache.Add(key, value)
+	go func() {
+		g.messagePipe <- value
+	}()
+}

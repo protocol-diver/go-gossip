@@ -9,8 +9,14 @@ import (
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	payload, packetType, encType, err := RemoveLabelFromPacket(buf)
 	if err != nil {
-		// log
 		return
+	}
+	if encType != TEMP_NONE_ENC {
+		cipher := NewCipher(encType)
+		payload, err = cipher.Decrypt(g.cfg.passphrase, payload)
+		if err != nil {
+			return
+		}
 	}
 	switch packetType {
 	case PushMessageType:
@@ -32,14 +38,13 @@ func (g *Gossiper) pushMessageHandle(payload []byte, encType EncryptType, sender
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
 	}
+
 	value := g.get(msg.Key)
 	if value != nil {
 		return
 	}
-	g.messageCache.Add(msg.ID(), msg.Data)
-	go func() {
-		g.messagePipe <- msg.Data
-	}()
+
+	g.add(msg.Key, msg.Data)
 
 	response := PushAck{atomic.AddUint32(&g.seq, 1), msg.Key}
 
@@ -54,9 +59,6 @@ func (g *Gossiper) pushMessageHandle(payload []byte, encType EncryptType, sender
 
 func (g *Gossiper) pushAckHandle(payload []byte, encType EncryptType) {
 	var msg PushAck
-
-	_ = encType
-
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
 	}
@@ -90,6 +92,7 @@ func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
 	}
+
 	value := g.get(msg.Target)
 	if value == nil {
 		return
@@ -111,14 +114,11 @@ func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
 	}
+
 	value := g.get(msg.Target)
 	if value != nil {
 		return
 	}
 
-	g.messageCache.Add(msg.Target, msg.Data)
-
-	go func() {
-		g.messagePipe <- msg.Data
-	}()
+	g.add(msg.Target, msg.Data)
 }
