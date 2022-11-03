@@ -4,40 +4,22 @@ This is Go implementation of the Gossip protocol.<br>
 
 Gossip is a communication protocol that delivers messages in a distributed system. <br>
 The point is that each node transmits data while periodically exchanging metadata based on TCP/UDP without a broadcast master. <br>
-In general, each node periodically performs health checks of other nodes and communicates with them, but this library relies on an externally imported discovery layer.<br>
+In general, each node periodically performs health checks of other nodes and communicates with them, but this library relies on an externally imported discovery layer. <br>
+The gossip protocol is divided into two main categories: Push and Pull. If implemented as a push, it becomes inefficient if a large number of peers are already infected. If implemented as Pull, it will propagate efficiently, but there is a point to be concerned about because the message that needs to be propagated to the peer needs to be managed. <br>
+In this project, by properly mixing push and pull methods, it is possible to efficiently propagate even when a large number of peers are already infected, and the goal is to reduce the difficulty of managing messages that need to be propagated to other peers. <br>
+it works almost identically to the existing Push-based gossip protocol. It selects a set number of random peers for a new message and send the message. The difference here is that the peer that receives the 'Push' message sends an ACK message to the sender. <br>
+If the target peer does not operate normally, or if the message has already received before, does not send ACK message. <br>
+The sender collects the number of ACKs to see if it has received a majority of the number of messages it has sent. If a 'Push' message is sent to 3 random peers, the 'Push' process will correctly end only when two or more 'ACK' are received. <br>
+What if I didn't get more than a majority? <br>
+Suppose you sent a 'Push' message to 3 random peers, but only received 1 'ACK'. The sender adds a certain value to the previously established number of peers 3 and sends, for example, 'PullSync' to 5 peers. The message is sent with the id of the data the sender was trying to propagate. The peer receiving the 'PullSync' sends a 'Pull request' including the data ID to the sender of the message. Finally, the original sender peer sends a 'Pull response' containing the requested data, and then deletes the data from the memory. <br>
+If implemented as above, the inefficiency of the push-based gossip protocol, which requires sending and receiving messages between already infected peers, and the hassle of managing data to respond to pull requests can be reduced. <br>
+
 Take a look at the list of supported features below. <br>
 
-- Message propagation (Pull)
+- Message propagation
 - Secure transport
 
 It's forcus on gossip through relying on discovery layer from outside.
-
-
-### pseudo code (temporary)
-```
-loop
-	(taskType, task) <- taskQueue
-	if taskType is 'PUSH' then
-		id, msg = task
-		if load(id) is 'empty' then
-			save(id)
-			relay(application program, msg)
-			peer <- randomPeers
-			send(peer, PULL_REQ, msg)
-		end if
-	endif
-	
-	if taskType is 'PULL_REQ' then
-		sender, id = task
-		send(sender, PULL_RES, load(id))
-	end if
-
-	if taskType is 'PULL_RES' then
-		id, msg = task
-		taskQueue <- ('PUSH', task(id, msg)
-	end if
-end loop
-```
 
 
 # Layer
@@ -64,28 +46,16 @@ For serve that, it's detect packet and handles them correctly to the packet type
 There is three tasks what this layer have to do. <br>
 
 1. The node should be able to be a gossip culprit. Provide surface interface for application programs to push gossip messages.
-2. Service propagation protocol by 'pull'. MUST have to send PULL_REQUEST to randomly selected peers if the node receive newly gossip request. When receive the PULL_REQUEST, the node reply to the sender with the requested value from PULL_REQUEST.
-3. Detects is the gossip message already exist in storage and relay the gossip messages to the application if necessary.
+2. MUST have to respond like, PUSH_MESSAGE -> PUSH_ACK, PULL_SYN -> PULL_REQUEST, PULL_REQUEST -> PULL_RESPONSE.
+3. Detects is the gossip message already exist in memory and relay the gossip messages to the application if necessary.
 
 The gossip node needs two buffers: a buffer where the application program can receive gossip messages and a buffer to temporarily store it to propagate to other gossip nodes. <br>
 I decided to use the LRU cache for message temporary storage for propagation. Gossip messages that no longer propagate are likely not to be referenced by other nodes in the future. One thing to consider here is that the size of the cache should be much larger than the number of times a node can make PUSH requests. Otherwise, the cache will be replaced as soon as it starts propagate gossip messages. <br>
 We need to find a suitable config values. <br>
-<br>
-Gossip node: 10000, Gossip number: 2, Gossip interval: 200 ms <br> 
-
-<b>Gossip message store timeout</b> <br>
-If you want 5 m, The LRU cache size is 3000 <br>
-```
-1s = 10 gossip message in LRU cache
-60s = 600 ...
-5m = 3000 ...
-```
-
-
 
 
 ## Transport/Security layer
-Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. ~~The method of sharing the session key is not in mind~~(not sure...). I'm just considering a method of encrypting and decrypting using a passphrase. <br>
+Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. I'm just considering a method of encrypting and decrypting using a passphrase. <br>
 
 Packet<br>
 ```
@@ -101,11 +71,13 @@ Label
 ┗----------------------------------------------------------┛
 ```
 Packet type (1 byte) <br>
-> 1: PullRequest <br>
-> 2: PullResponse <br>
+> 1: PushMessage <br>
+> 2: PullSync <br>
+> 3: PullRequest <br>
+> 4: PullResponse <br>
 
 Encrypt alogrithm (1 byte) <br>
-> 1: RSA-4096 (example) <br>
+> 1: AES-256-CBC <br>
 
 Actual data size (4 byte); BigEndian ordered uint32 <br>
 This is not necessary unless you add a specific flag (eg checksum) after the data.
