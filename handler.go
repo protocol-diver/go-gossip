@@ -64,6 +64,11 @@ func (g *Gossiper) pushAckHandle(payload []byte, encType EncryptType) {
 	}
 
 	g.ackMu.Lock()
+	// Ignore packets received after AckTimeout
+	if g.ackChan == nil {
+		g.ackMu.Unlock()
+		return
+	}
 	ch := g.ackChan[msg.Key]
 	g.ackMu.Unlock()
 
