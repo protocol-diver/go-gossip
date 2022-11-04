@@ -1,6 +1,7 @@
 package gogossip
 
 import (
+	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -10,14 +11,20 @@ import (
 )
 
 const (
-	// cfg
-	GossipNumber = 2
-
+	//
+	GossipNumber = 3
 	// Set to twice the predicted value of messages to occur per second
-	MessageCacheSize = 0
+	MessageCacheSize = 512
+	//
+	MessagePipeSize = 4096
+	//
+	MaxPacketSize = 8 * 1024
+	//
+	AckTimeout = 300 * time.Millisecond
 )
 
 type Gossiper struct {
+	run uint32
 	seq uint32
 
 	discovery Discovery
@@ -28,15 +35,39 @@ type Gossiper struct {
 	ackChan map[[8]byte]chan Packet
 	ackMu   sync.Mutex
 
-	messageCache lru.Cache
+	messageCache *lru.Cache
 
 	cfg *Config
+}
+
+func NewGossiper(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
+	cache, err := lru.New(512)
+	if err != nil {
+		return nil, err
+	}
+	gossiper := &Gossiper{
+		seq:          0,
+		discovery:    discv,
+		transport:    transport,
+		messagePipe:  make(chan []byte, 4096),
+		ackChan:      make(map[[8]byte]chan Packet),
+		messageCache: cache,
+		cfg:          cfg,
+	}
+	return gossiper, nil
+}
+
+func (g *Gossiper) Start() {
+	if atomic.LoadUint32(&g.run) == 1 {
+		return
+	}
+	go g.dispatch()
 }
 
 func (g *Gossiper) dispatch() {
 	for {
 		// Temp
-		buf := make([]byte, 0)
+		buf := make([]byte, 8192)
 		_, sender, err := g.transport.ReadFromUDP(buf)
 		if err != nil {
 			continue
@@ -49,9 +80,16 @@ func (g *Gossiper) dispatch() {
 func (g *Gossiper) Push(buf []byte) {
 	id := idGenerator()
 	ch := make(chan Packet)
+
 	g.ackMu.Lock()
 	g.ackChan[id] = ch
 	g.ackMu.Unlock()
+
+	defer func() {
+		g.ackMu.Lock()
+		delete(g.ackChan, id)
+		g.ackMu.Unlock()
+	}()
 
 	msg := PushMessage{atomic.AddUint32(&g.seq, 1), id, buf}
 
@@ -122,7 +160,17 @@ func (g *Gossiper) MessagePipe() chan []byte {
 }
 
 func (g *Gossiper) SelectRandomPeers(n int) []string {
-	return nil
+	peers := g.discovery.Gossipiers()
+	if len(peers) <= n {
+		return peers
+	}
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	selected := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		selected = append(selected, peers[random.Intn(n)])
+	}
+	return selected
 }
 
 func (g *Gossiper) get(key [8]byte) []byte {
