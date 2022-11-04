@@ -1,8 +1,6 @@
 package gogossip
 
 import (
-	"crypto/rsa"
-
 	"github.com/dbadoy/go-gossip/crypto"
 )
 
@@ -16,7 +14,7 @@ type EncryptType byte
 func (e EncryptType) String() string {
 	switch e {
 	case TEMP_NONE_ENC:
-		return "N"
+		return "NO-SECURE"
 	case AES256_CBC_TYPE:
 		return "AES256-CBC"
 	}
@@ -24,13 +22,8 @@ func (e EncryptType) String() string {
 }
 
 type CipherMethod interface {
-	// SymmetricCipher
 	Encrypt(string, []byte) ([]byte, error)
 	Decrypt(string, []byte) ([]byte, error)
-
-	// ?
-	EncryptWithPublicKey(*rsa.PublicKey, []byte) ([]byte, error)
-	DecryptWithPrivateKey(*rsa.PrivateKey, []byte) ([]byte, error)
 }
 
 type Cipher struct {
