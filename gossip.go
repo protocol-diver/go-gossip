@@ -2,7 +2,6 @@ package gogossip
 
 import (
 	"math/rand"
-	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -78,13 +77,17 @@ func (g *Gossiper) dispatch() {
 }
 
 func (g *Gossiper) Push(buf []byte) {
+	// Make new gossip message id.
 	id := idGenerator()
+
+	// Allocate channel for receive the ACKs from PushMessage.
 	ch := make(chan Packet)
 
 	g.ackMu.Lock()
 	g.ackChan[id] = ch
 	g.ackMu.Unlock()
 
+	// Deallocate ACK channel when AckTimeout reached.
 	defer func() {
 		g.ackMu.Lock()
 		delete(g.ackChan, id)
@@ -93,25 +96,17 @@ func (g *Gossiper) Push(buf []byte) {
 
 	msg := PushMessage{atomic.AddUint32(&g.seq, 1), id, buf}
 
-	buf, err := AddLabelFromPacket(&msg, g.cfg.encryptType)
+	//
+	p, err := AddLabelFromPacket(&msg, g.cfg.encryptType)
 	if err != nil {
 		// log
 		return
 	}
 
-	peers := g.SelectRandomPeers(GossipNumber)
-	for _, peer := range peers {
-		addr, err := net.ResolveUDPAddr("udp", peer)
-		if err != nil {
-			// log
-			continue
-		}
-		if _, err := g.transport.WriteToUDP(buf, addr); err != nil {
-			// log
-			continue
-		}
-	}
+	//
+	multicastWithRawAddress(g.transport, g.SelectRandomPeers(GossipNumber), p)
 
+	// Starts count ACK messages.
 	ackCount := 0
 	timer := time.NewTimer(300 * time.Millisecond)
 	defer timer.Stop()
@@ -126,39 +121,31 @@ func (g *Gossiper) Push(buf []byte) {
 			if ack.Key == id {
 				ackCount++
 			}
+			// Normal finish
 			if ackCount >= (GossipNumber / 2) {
-				// correct finish
 				return
 			}
 		case <-timer.C:
+			// Send PullSync for starts the Pull flow if timeout reached.
 			pullSync := PullSync{atomic.LoadUint32(&g.seq), id}
 
-			buf, err := AddLabelFromPacket(&pullSync, g.cfg.encryptType)
+			p, err := AddLabelFromPacket(&pullSync, g.cfg.encryptType)
 			if err != nil {
 				// log
 				return
 			}
 
-			peers := g.SelectRandomPeers(GossipNumber * 2)
-			for _, peer := range peers {
-				addr, err := net.ResolveUDPAddr("udp", peer)
-				if err != nil {
-					// log
-					continue
-				}
-				if _, err := g.transport.WriteToUDP(buf, addr); err != nil {
-					// log
-					continue
-				}
-			}
+			multicastWithRawAddress(g.transport, g.SelectRandomPeers(GossipNumber*2), p)
 		}
 	}
 }
 
+//
 func (g *Gossiper) MessagePipe() chan []byte {
 	return g.messagePipe
 }
 
+//
 func (g *Gossiper) SelectRandomPeers(n int) []string {
 	peers := g.discovery.Gossipiers()
 	if len(peers) <= n {
@@ -166,6 +153,7 @@ func (g *Gossiper) SelectRandomPeers(n int) []string {
 	}
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	// TODO(dbadoy): Avoid duplicate selection.
 	selected := make([]string, 0, n)
 	for i := 0; i < n; i++ {
 		selected = append(selected, peers[random.Intn(n)])
@@ -173,6 +161,7 @@ func (g *Gossiper) SelectRandomPeers(n int) []string {
 	return selected
 }
 
+//
 func (g *Gossiper) get(key [8]byte) []byte {
 	v, ok := g.messageCache.Get(key)
 	if !ok {
@@ -181,6 +170,7 @@ func (g *Gossiper) get(key [8]byte) []byte {
 	return v.([]byte)
 }
 
+//
 func (g *Gossiper) add(key [8]byte, value []byte) {
 	g.messageCache.Add(key, value)
 	go func() {
