@@ -72,7 +72,7 @@ func (g *Gossiper) pushAckHandle(payload []byte, encType EncryptType) {
 	ch := g.ackChan[msg.Key]
 	g.ackMu.Unlock()
 
-	ch <- &msg
+	ch <- msg
 }
 
 func (g *Gossiper) pullSyncHandle(payload []byte, encType EncryptType, sender *net.UDPAddr) {

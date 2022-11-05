@@ -31,7 +31,7 @@ type Gossiper struct {
 
 	messagePipe chan []byte
 
-	ackChan map[[8]byte]chan Packet
+	ackChan map[[8]byte]chan PushAck
 	ackMu   sync.Mutex
 
 	messageCache *lru.Cache
@@ -49,7 +49,7 @@ func NewGossiper(discv Discovery, transport Transport, cfg *Config) (*Gossiper, 
 		discovery:    discv,
 		transport:    transport,
 		messagePipe:  make(chan []byte, 4096),
-		ackChan:      make(map[[8]byte]chan Packet),
+		ackChan:      make(map[[8]byte]chan PushAck),
 		messageCache: cache,
 		cfg:          cfg,
 	}
@@ -81,7 +81,7 @@ func (g *Gossiper) Push(buf []byte) {
 	id := idGenerator()
 
 	// Allocate channel for receive the ACKs from PushMessage.
-	ch := make(chan Packet)
+	ch := make(chan PushAck)
 
 	g.ackMu.Lock()
 	g.ackChan[id] = ch
@@ -112,12 +112,7 @@ func (g *Gossiper) Push(buf []byte) {
 	defer timer.Stop()
 	for {
 		select {
-		case ackPacket := <-ch:
-			ack, ok := ackPacket.(*PushAck)
-			if !ok {
-				// log
-				continue
-			}
+		case ack := <-ch:
 			if ack.Key == id {
 				ackCount++
 			}
