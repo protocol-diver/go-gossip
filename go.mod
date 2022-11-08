@@ -1,4 +1,4 @@
-module github.com/dbadoy/go-gossip
+module github.com/protocol-diver/go-gossip
 
 go 1.18
 

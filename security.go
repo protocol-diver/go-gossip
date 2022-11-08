@@ -1,7 +1,7 @@
 package gogossip
 
 import (
-	"github.com/dbadoy/go-gossip/crypto"
+	"github.com/protocol-diver/go-gossip/crypto"
 )
 
 const (
