@@ -11,15 +11,15 @@ import (
 
 const (
 	//
-	GossipNumber = 3
+	gossipNumber = 3
 	// Set to twice the predicted value of messages to occur per second
-	MessageCacheSize = 512
+	messageCacheSize = 512
 	//
-	MessagePipeSize = 4096
+	messagePipeSize = 4096
 	//
-	MaxPacketSize = 8 * 1024
+	maxPacketSize = 8 * 1024
 	//
-	AckTimeout = 300 * time.Millisecond
+	ackTimeout = 300 * time.Millisecond
 )
 
 type Gossiper struct {
@@ -94,17 +94,18 @@ func (g *Gossiper) Push(buf []byte) {
 		g.ackMu.Unlock()
 	}()
 
-	msg := PushMessage{atomic.AddUint32(&g.seq, 1), id, buf}
+	msg := &PushMessage{atomic.AddUint32(&g.seq, 1), id, buf}
 
-	//
-	p, err := AddLabelFromPacket(&msg, g.cfg.encryptType)
+	// Encryption.
+	cipher, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, msg)
 	if err != nil {
-		// log
 		return
 	}
+	// Combine Label with Payload.
+	p := BytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(cipher)
 
 	//
-	multicastWithRawAddress(g.transport, g.SelectRandomPeers(GossipNumber), p)
+	multicastWithRawAddress(g.transport, g.SelectRandomPeers(gossipNumber), p)
 
 	// Starts count ACK messages.
 	ackCount := 0
@@ -117,20 +118,20 @@ func (g *Gossiper) Push(buf []byte) {
 				ackCount++
 			}
 			// Normal finish
-			if ackCount >= (GossipNumber / 2) {
+			if ackCount >= (gossipNumber / 2) {
 				return
 			}
 		case <-timer.C:
 			// Send PullSync for starts the Pull flow if timeout reached.
-			pullSync := PullSync{atomic.LoadUint32(&g.seq), id}
+			pullSync := &PullSync{atomic.LoadUint32(&g.seq), id}
 
-			p, err := AddLabelFromPacket(&pullSync, g.cfg.encryptType)
+			cipher, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, pullSync)
 			if err != nil {
-				// log
 				return
 			}
+			p := BytesToLabel([]byte{pullSync.Kind(), byte(g.cfg.encryptType)}).combine(cipher)
 
-			multicastWithRawAddress(g.transport, g.SelectRandomPeers(GossipNumber*2), p)
+			multicastWithRawAddress(g.transport, g.SelectRandomPeers(gossipNumber*2), p)
 		}
 	}
 }
