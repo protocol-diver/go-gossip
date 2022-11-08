@@ -68,26 +68,17 @@ Packet<br>
 
 Label
 ```
-┏----------------------------------------------------------┓
-| Packet type| Encrypt algorithm | Actual data size (May?) | 
-┗----------------------------------------------------------┛
+┏--------------------------------┓
+| Packet type| Encrypt algorithm | 
+┗--------------------------------┛
 ```
 Packet type (1 byte) <br>
 > 1: PushMessage <br>
-> 2: PullSync <br>
-> 3: PullRequest <br>
-> 4: PullResponse <br>
+> 2: PushAck <br>
+> 3: PullSync <br>
+> 4: PullRequest <br>
+> 5: PullResponse <br>
 
 Encrypt alogrithm (1 byte) <br>
+> 0: NO-SECURE <br>
 > 1: AES-256-CBC <br>
-
-Actual data size (4 byte); BigEndian ordered uint32 <br>
-This is not necessary unless you add a specific flag (eg checksum) after the data.
-
-PULL_REQUEST
-```
-```
-
-PULL_RESPONSE
-```
-```
