@@ -16,7 +16,7 @@ func TestEncrypt_AES256_CBC(t *testing.T) {
 		{ekey: "seungbae", dkey: "seungbae1", plain: "hello, world", err: true},
 	}
 
-	cipher := NewCipher(AES256_CBC_TYPE)
+	cipher := newCipher(AES256_CBC_TYPE)
 
 	for _, td := range tds {
 		defer func() {
