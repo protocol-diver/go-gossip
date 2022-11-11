@@ -9,7 +9,7 @@ import (
 
 const (
 	//
-	gossipNumber = 3
+	gossipNumber = 2
 	//
 	pullInterval = 200 * time.Millisecond
 )
