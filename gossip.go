@@ -75,6 +75,7 @@ func (g *Gossiper) pullLoop() {
 		p, err := bytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(buf)
 		if err != nil {
 			log.Printf("pullLoop: labeling failure %v", err)
+			continue
 		}
 
 		// Choose random peers and send.
