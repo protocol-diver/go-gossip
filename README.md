@@ -6,15 +6,8 @@ Gossip is a communication protocol that delivers messages in a distributed syste
 The point is that each node transmits data while periodically exchanging metadata based on TCP/UDP without a broadcast master. <br>
 In general, each node periodically performs health checks of other nodes and communicates with them, but this library relies on an externally imported discovery layer. <br>
 The gossip protocol is divided into two main categories: Push and Pull. If implemented as a push, it becomes inefficient if a large number of peers are already infected. If implemented as Pull, it will propagate efficiently, but there is a point to be concerned about because the message that needs to be propagated to the peer needs to be managed. <br>
-In this project, by properly mixing push and pull methods, it is possible to efficiently propagate even when a large number of peers are already infected, and the goal is to reduce the difficulty of managing messages that need to be propagated to other peers. <br>
-It works almost identically to the existing Push-based gossip protocol. It selects a set number of random peers for a new message and send the message. The difference here is that the peer that receives the 'Push' message sends an ACK message to the sender. <br>
-If the target peer does not operate normally, or if the message has already received before, does not send ACK message. <br>
-The sender collects the number of ACKs to see if it has received a majority of the number of messages it has sent. If a 'Push' message is sent to 3 random peers, the 'Push' process will correctly end only when two or more 'ACK' are received. <br>
-
-> What if I didn't get more than a majority? <br>
-
-Suppose you sent a 'Push' message to 3 random peers, but only received 1 'ACK'. The sender adds a certain value to the previously set 3 and sends a 'PullSync' to 5 peers for example. The message is sent with the id of the data the sender was trying to propagate. The peer receiving the 'PullSync' sends a 'Pull request' including the data ID to the sender of the message. Finally, the original sender peer sends a 'Pull response' containing the requested data. <br>
-If implemented as above, the inefficiency of the push-based gossip protocol, which requires sending and receiving messages between already infected peers, and the hassle of managing data to respond to pull requests can be reduced. <br>
+This project implements the Pull-based Gossip protocol. That's why we need to implement a way to send a new message when another node requests it. <br>
+We could use a way to store the message in memory and increment the count when another node requests it, but here we put a timeout on the message for  cleaned up. <br>
 
 Take a look at the list of supported features below. <br>
 
@@ -51,10 +44,6 @@ There is three tasks what this layer have to do. <br>
 2. Handles them correctly to the packet types.
 3. Detects is the gossip message already exist in memory and relay the gossip messages to the application if necessary.
 
-The gossip node needs two buffers: a buffer where the application program can receive gossip messages and a buffer to temporarily store it to propagate to other gossip nodes. <br>
-I decided to use the LRU cache for message temporary storage for propagation. Gossip messages that no longer propagate are likely not to be referenced by other nodes in the future. One thing to consider here is that the size of the cache should be much larger than the number of times a node can make PUSH requests. Otherwise, the cache will be replaced as soon as it starts propagate gossip messages. <br>
-We need to find a suitable config values. <br>
-
 Take a look the packet specification below. <br>
 
 Packet<br>
@@ -71,18 +60,9 @@ Label
 ┗--------------------------------┛
 ```
 Packet type (1 byte) <br>
-> 1: PushMessage <br>
-> 2: PushAck <br>
-> 3: PullSync <br>
-> 4: PullRequest <br>
-> 5: PullResponse <br>
+> 1: PullRequest <br>
+> 2: PullResponse <br>
 
-### Packet handle
-PushMessage - Repond 'PushAck' to sender. (Do not respond if the message has already been received) <br>
-PushAck - Increments the received ack counter. <br>
-PullSync - Respond to the sender with a 'PullRequest' containing the message key of 'PullSync'. (Do not respond if the message has already been received) <br>
-PullRequest - Respond to the sender with a PullResponse including the requested value. <br>
-PullResponse - Save the received value and start propagating it around again. <br>
 
 ## Transport/Security layer
 Transport layer supports peer-to-peer UDP communication.
