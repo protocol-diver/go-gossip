@@ -78,9 +78,9 @@ Packet type (1 byte) <br>
 > 5: PullResponse <br>
 
 ### Packet handle
-PushMessage - Repond 'PushAck' to sender. <br>
+PushMessage - Repond 'PushAck' to sender. (Do not respond if the message has already been received) <br>
 PushAck - Increments the received ack counter. <br>
-PullSync - Respond to the sender with a 'PullRequest' containing the message key of 'PullSync'. If the message has already been received, there will be no response. <br>
+PullSync - Respond to the sender with a 'PullRequest' containing the message key of 'PullSync'. (Do not respond if the message has already been received) <br>
 PullRequest - Respond to the sender with a PullResponse including the requested value. <br>
 PullResponse - Save the received value and start propagating it around again. <br>
 
