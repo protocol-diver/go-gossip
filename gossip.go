@@ -1,7 +1,7 @@
 package gogossip
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -67,7 +67,7 @@ func (g *Gossiper) pullLoop() {
 		// Encryption.
 		buf, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, msg)
 		if err != nil {
-			fmt.Println("pullLoop: ", err)
+			log.Printf("pullLoop: encryption failure %v", err)
 			continue
 		}
 
@@ -85,7 +85,7 @@ func (g *Gossiper) readLoop() {
 		buf := make([]byte, 8192)
 		n, sender, err := g.transport.ReadFromUDP(buf)
 		if err != nil {
-			fmt.Println("readLoop: ", err)
+			log.Printf("readLoop: read UDP packet failure %v", err)
 			continue
 		}
 

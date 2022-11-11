@@ -2,7 +2,7 @@ package gogossip
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net"
 	"sync/atomic"
 )
@@ -22,10 +22,12 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 		if packet != nil {
 			cipher, err := EncryptPacket(encType, g.cfg.passphrase, packet)
 			if err != nil {
+				log.Printf("handler: encryption failure, %v", err)
 				return
 			}
 			p := BytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
 			if _, err := g.transport.WriteToUDP(p, sender); err != nil {
+				log.Printf("handler: transport filaure, %v", err)
 				return
 			}
 		}
@@ -37,14 +39,15 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	case PullResponseType:
 		g.pullResponseHandle(plain, encType)
 	default:
-		fmt.Printf("invalid packet type %d", label.packetType)
+		log.Printf("hander: invalid packet detectd, type: %d sender: %s", label.packetType, sender.String())
 	}
 }
 
 func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender *net.UDPAddr) Packet {
 	kl, vl := g.messages.itemsWithTouch(sender.String())
 	if len(kl) != len(vl) {
-		panic("invalid protocol detected")
+		log.Printf("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
+		return nil
 	}
 
 	return &PullResponse{atomic.AddUint32(&g.seq, 1), kl, vl}
@@ -56,7 +59,8 @@ func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
 		return
 	}
 	if len(msg.Keys) != len(msg.Values) {
-		panic("invalid protocol detected")
+		log.Printf("pullResponseHandle: invalid protocol detected, different key value sizes in the packet")
+		return
 	}
 
 	for i := 0; i < len(msg.Keys); i++ {
