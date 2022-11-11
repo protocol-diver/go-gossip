@@ -1,6 +1,6 @@
 # go-gossip
 This is Go implementation of the Gossip protocol.<br>
-<br>
+
 
 Gossip is a communication protocol that delivers messages in a distributed system. <br>
 The point is that each node transmits data while periodically exchanging metadata based on TCP/UDP without a broadcast master. <br>
@@ -48,16 +48,14 @@ For serve that, it's detect packet and handles them correctly to the packet type
 There is three tasks what this layer have to do. <br>
 
 1. The node should be able to be a gossip culprit. Provide surface interface for application programs to push gossip messages.
-2. MUST have to respond like, PUSH_MESSAGE -> PUSH_ACK, PULL_SYN -> PULL_REQUEST, PULL_REQUEST -> PULL_RESPONSE.
+2. Handles them correctly to the packet types.
 3. Detects is the gossip message already exist in memory and relay the gossip messages to the application if necessary.
 
 The gossip node needs two buffers: a buffer where the application program can receive gossip messages and a buffer to temporarily store it to propagate to other gossip nodes. <br>
 I decided to use the LRU cache for message temporary storage for propagation. Gossip messages that no longer propagate are likely not to be referenced by other nodes in the future. One thing to consider here is that the size of the cache should be much larger than the number of times a node can make PUSH requests. Otherwise, the cache will be replaced as soon as it starts propagate gossip messages. <br>
 We need to find a suitable config values. <br>
 
-
-## Transport/Security layer
-Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. I'm just considering a method of encrypting and decrypting using a passphrase. <br>
+Take a look the packet specification below. <br>
 
 Packet<br>
 ```
@@ -78,6 +76,17 @@ Packet type (1 byte) <br>
 > 3: PullSync <br>
 > 4: PullRequest <br>
 > 5: PullResponse <br>
+
+### Packet handle
+PushMessage - Repond 'PushAck' to sender. <br>
+PushAck - Increments the received ack counter. <br>
+PullSync - Respond to the sender with a 'PullRequest' containing the message key of 'PullSync'. If the message has already been received, there will be no response. <br>
+PullRequest - Respond to the sender with a PullResponse including the requested value. <br>
+PullResponse - Save the received value and start propagating it around again. <br>
+
+## Transport/Security layer
+Transport layer supports peer-to-peer UDP communication.
+Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. I'm just considering a method of encrypting and decrypting using a passphrase. <br>
 
 Encrypt alogrithm (1 byte) <br>
 > 0: NO-SECURE <br>
