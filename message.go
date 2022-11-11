@@ -6,11 +6,8 @@ type Packet interface {
 }
 
 const (
-	PushMessageType  = 0x01
-	PushAckType      = 0x02
-	PullSyncType     = 0x03
-	PullRequestType  = 0x04
-	PullResponseType = 0x05
+	PullRequestType  = 0x01
+	PullResponseType = 0x02
 )
 
 type (

@@ -72,7 +72,10 @@ func (g *Gossiper) pullLoop() {
 		}
 
 		// Labeling.
-		p := BytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(buf)
+		p, err := bytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(buf)
+		if err != nil {
+			log.Printf("pullLoop: labeling failure %v", err)
+		}
 
 		// Choose random peers and send.
 		multicastWithRawAddress(g.transport, g.selectRandomPeers(gossipNumber), p)

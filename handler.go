@@ -8,7 +8,11 @@ import (
 )
 
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
-	label, payload := SplitLabel(buf)
+	label, payload, err := splitLabel(buf)
+	if err != nil {
+		log.Printf("handler: SplitLabel failure, %v", err)
+	}
+
 	encType := EncryptType(label.encryptType)
 
 	plain, err := DecryptPayload(encType, g.cfg.passphrase, payload)
@@ -25,7 +29,10 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 				log.Printf("handler: encryption failure, %v", err)
 				return
 			}
-			p := BytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
+			p, err := bytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
+			if err != nil {
+				log.Printf("handler: trasport failture, %v", err)
+			}
 			if _, err := g.transport.WriteToUDP(p, sender); err != nil {
 				log.Printf("handler: transport filaure, %v", err)
 				return
