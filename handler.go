@@ -50,6 +50,8 @@ func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender
 		return nil
 	}
 
+	// TODO(dbadoy): Send it in multiple pieces. Sometimes occur error
+	// about message too big.
 	return &PullResponse{atomic.AddUint32(&g.seq, 1), kl, vl}
 }
 
