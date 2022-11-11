@@ -6,27 +6,35 @@ import (
 )
 
 const (
-	//
 	timeout = 30 * time.Second
 )
 
+// messages stores recent gossip messages.
+// It also stores a deadline for deletion from memory.
 type message struct {
 	value    []byte
 	deadline time.Time
 
 	// Marking for the requestor. Exclude if the requestor has already taken it.
+	// If don't check it here, occur a unnecessary response.
 	touched map[string]bool
 }
 
+// broadcast manages the message in the form of a map.
+// The message exist here means a message to be propagated to
+// neighboring nodes.
 type broadcast struct {
 	mu sync.Mutex
 	m  map[[8]byte]message
 }
 
+// add is a method for storing messages in broadcast.
+// If it already exists, it is skipped, and if it does not exist,
+// it is added by setting a deadline.
 func (b *broadcast) add(key [8]byte, value []byte) bool {
 	b.mu.Lock()
 	if _, ok := b.m[key]; ok {
-		// already received
+		// This message already received.
 		b.mu.Unlock()
 		return false
 	}
@@ -40,6 +48,8 @@ func (b *broadcast) add(key [8]byte, value []byte) bool {
 	return true
 }
 
+// keys returns all keys that exist in the map in broadcast.
+//
 // The caller must hold b.mu.
 func (b *broadcast) keys() [][8]byte {
 	keys := make([][8]byte, 0, len(b.m))
@@ -49,6 +59,9 @@ func (b *broadcast) keys() [][8]byte {
 	return keys
 }
 
+// itemsWithTouch gets all messages that exist in B. In the process,
+// messages already taken by the requester are excluded. It also marks
+// the returned message(to exclude next request).
 func (b *broadcast) itemsWithTouch(addr string) ([][8]byte, [][]byte) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -67,6 +80,7 @@ func (b *broadcast) itemsWithTouch(addr string) ([][8]byte, [][]byte) {
 	return rk, rv
 }
 
+// timeoutLoop periodically finds and deletes message that has expired in broadcast.
 func (b *broadcast) timeoutLoop() {
 	ticker := time.NewTicker(timeout)
 	defer ticker.Stop()
