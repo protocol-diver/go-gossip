@@ -1,25 +1,17 @@
 package gogossip
 
 import (
+	"fmt"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"time"
-
-	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
 	//
 	gossipNumber = 3
-	// Set to twice the predicted value of messages to occur per second
-	messageCacheSize = 512
 	//
-	messagePipeSize = 4096
-	//
-	maxPacketSize = 8 * 1024
-	//
-	ackTimeout = 300 * time.Millisecond
+	pullInterval = 200 * time.Millisecond
 )
 
 type Gossiper struct {
@@ -29,29 +21,28 @@ type Gossiper struct {
 	discovery Discovery
 	transport Transport
 
-	messagePipe chan []byte
-
-	ackChan map[[8]byte]chan PushAck
-	ackMu   sync.Mutex
-
-	messageCache *lru.Cache
+	messages broadcast
+	pipe     chan []byte
 
 	cfg *Config
 }
 
 func NewGossiper(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
-	cache, err := lru.New(512)
-	if err != nil {
-		return nil, err
+	if cfg == nil {
+		cfg = &Config{
+			encryptType: NO_SECURE_TYPE,
+			passphrase:  "",
+		}
 	}
 	gossiper := &Gossiper{
-		seq:          0,
-		discovery:    discv,
-		transport:    transport,
-		messagePipe:  make(chan []byte, 4096),
-		ackChan:      make(map[[8]byte]chan PushAck),
-		messageCache: cache,
-		cfg:          cfg,
+		seq:       0,
+		discovery: discv,
+		transport: transport,
+		messages: broadcast{
+			m: make(map[[8]byte]message),
+		},
+		pipe: make(chan []byte, 4096),
+		cfg:  cfg,
 	}
 	return gossiper, nil
 }
@@ -60,89 +51,68 @@ func (g *Gossiper) Start() {
 	if atomic.LoadUint32(&g.run) == 1 {
 		return
 	}
-	go g.dispatch()
+	go g.messages.timeoutLoop()
+	go g.readLoop()
+	go g.pullLoop()
 }
 
-func (g *Gossiper) dispatch() {
+func (g *Gossiper) pullLoop() {
+	ticker := time.NewTicker(pullInterval)
+	defer ticker.Stop()
 	for {
-		// Temp
-		buf := make([]byte, 8192)
-		_, sender, err := g.transport.ReadFromUDP(buf)
+		<-ticker.C
+		// Request PullRequest to random peers.
+		msg := &PullRequest{}
+
+		// Encryption.
+		buf, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, msg)
 		if err != nil {
+			fmt.Println("pullLoop: ", err)
 			continue
 		}
 
-		go g.handler(buf, sender)
+		// Labeling.
+		p := BytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(buf)
+
+		// Choose random peers and send.
+		multicastWithRawAddress(g.transport, g.selectRandomPeers(gossipNumber), p)
 	}
 }
 
-func (g *Gossiper) Push(buf []byte) {
-	// Make new gossip message id.
-	id := idGenerator()
-
-	// Allocate channel for receive the ACKs from PushMessage.
-	ch := make(chan PushAck)
-
-	g.ackMu.Lock()
-	g.ackChan[id] = ch
-	g.ackMu.Unlock()
-
-	// Deallocate ACK channel when AckTimeout reached.
-	defer func() {
-		g.ackMu.Lock()
-		delete(g.ackChan, id)
-		g.ackMu.Unlock()
-	}()
-
-	msg := &PushMessage{atomic.AddUint32(&g.seq, 1), id, buf}
-
-	// Encryption.
-	cipher, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, msg)
-	if err != nil {
-		return
-	}
-	// Combine Label with Payload.
-	p := BytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(cipher)
-
-	//
-	multicastWithRawAddress(g.transport, g.SelectRandomPeers(gossipNumber), p)
-
-	// Starts count ACK messages.
-	ackCount := 0
-	timer := time.NewTimer(300 * time.Millisecond)
-	defer timer.Stop()
+func (g *Gossiper) readLoop() {
 	for {
-		select {
-		case ack := <-ch:
-			if ack.Key == id {
-				ackCount++
-			}
-			// Normal finish
-			if ackCount >= (gossipNumber / 2) {
-				return
-			}
-		case <-timer.C:
-			// Send PullSync for starts the Pull flow if timeout reached.
-			pullSync := &PullSync{atomic.LoadUint32(&g.seq), id}
-
-			cipher, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, pullSync)
-			if err != nil {
-				return
-			}
-			p := BytesToLabel([]byte{pullSync.Kind(), byte(g.cfg.encryptType)}).combine(cipher)
-
-			multicastWithRawAddress(g.transport, g.SelectRandomPeers(gossipNumber*2), p)
+		// Temprary packet limit. Need basis.
+		buf := make([]byte, 8192)
+		n, sender, err := g.transport.ReadFromUDP(buf)
+		if err != nil {
+			fmt.Println("readLoop: ", err)
+			continue
 		}
+
+		// Slice actual data.
+		r := buf[:n]
+		go g.handler(r, sender)
 	}
 }
 
-//
-func (g *Gossiper) MessagePipe() chan []byte {
-	return g.messagePipe
+// Surface to application for starts gossip.
+func (g *Gossiper) Push(buf []byte) {
+	g.push(idGenerator(), buf)
 }
 
-//
-func (g *Gossiper) SelectRandomPeers(n int) []string {
+// Surface to application for send newly messages.
+func (g *Gossiper) MessagePipe() chan []byte {
+	return g.pipe
+}
+
+func (g *Gossiper) push(key [8]byte, value []byte) {
+	if g.messages.add(key, value) {
+		g.pipe <- value
+	}
+}
+
+// Select random peers.
+func (g *Gossiper) selectRandomPeers(n int) []string {
 	peers := g.discovery.Gossipiers()
 	if len(peers) <= n {
 		return peers
@@ -155,21 +125,4 @@ func (g *Gossiper) SelectRandomPeers(n int) []string {
 		selected = append(selected, peers[random.Intn(n)])
 	}
 	return selected
-}
-
-//
-func (g *Gossiper) get(key [8]byte) []byte {
-	v, ok := g.messageCache.Get(key)
-	if !ok {
-		return nil
-	}
-	return v.([]byte)
-}
-
-//
-func (g *Gossiper) add(key [8]byte, value []byte) {
-	g.messageCache.Add(key, value)
-	go func() {
-		g.messagePipe <- value
-	}()
 }

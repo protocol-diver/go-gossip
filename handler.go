@@ -2,6 +2,7 @@ package gogossip
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"sync/atomic"
 )
@@ -31,76 +32,22 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	}()
 
 	switch label.packetType {
-	case PushMessageType:
-		packet = g.pushMessageHandle(plain, encType, sender)
-	case PushAckType:
-		g.pushAckHandle(plain, encType)
-	case PullSyncType:
-		packet = g.pullSyncHandle(plain, encType, sender)
 	case PullRequestType:
 		packet = g.pullRequestHandle(plain, encType, sender)
 	case PullResponseType:
 		g.pullResponseHandle(plain, encType)
+	default:
+		fmt.Printf("invalid packet type %d", label.packetType)
 	}
-	// ("invalid packet type %d", packetType)
-}
-
-func (g *Gossiper) pushMessageHandle(payload []byte, encType EncryptType, sender *net.UDPAddr) Packet {
-	var msg PushMessage
-	if err := json.Unmarshal(payload, &msg); err != nil {
-		return nil
-	}
-
-	value := g.get(msg.Key)
-	if value != nil {
-		return nil
-	}
-
-	// Send gossip message to pipe if receive newly message.
-	g.add(msg.Key, msg.Data)
-
-	return &PushAck{atomic.AddUint32(&g.seq, 1), msg.Key}
-}
-
-func (g *Gossiper) pushAckHandle(payload []byte, encType EncryptType) {
-	var msg PushAck
-	if err := json.Unmarshal(payload, &msg); err != nil {
-		return
-	}
-
-	g.ackMu.Lock()
-	// Ignore packets received after AckTimeout
-	if g.ackChan == nil {
-		g.ackMu.Unlock()
-		return
-	}
-	ch := g.ackChan[msg.Key]
-	g.ackMu.Unlock()
-
-	ch <- msg
-}
-
-func (g *Gossiper) pullSyncHandle(payload []byte, encType EncryptType, sender *net.UDPAddr) Packet {
-	var msg PullSync
-	if err := json.Unmarshal(payload, &msg); err != nil {
-		return nil
-	}
-
-	return &PullRequest{atomic.AddUint32(&g.seq, 1), msg.Target}
 }
 
 func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender *net.UDPAddr) Packet {
-	var msg PullRequest
-	if err := json.Unmarshal(payload, &msg); err != nil {
-		return nil
+	kl, vl := g.messages.itemsWithTouch(sender.String())
+	if len(kl) != len(vl) {
+		panic("invalid protocol detected")
 	}
 
-	value := g.get(msg.Target)
-	if value == nil {
-		return nil
-	}
-
-	return &PullResponse{atomic.AddUint32(&g.seq, 1), msg.Target, value}
+	return &PullResponse{atomic.AddUint32(&g.seq, 1), kl, vl}
 }
 
 func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
@@ -108,11 +55,11 @@ func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
 	}
-
-	value := g.get(msg.Target)
-	if value != nil {
-		return
+	if len(msg.Keys) != len(msg.Values) {
+		panic("invalid protocol detected")
 	}
 
-	g.add(msg.Target, msg.Data)
+	for i := 0; i < len(msg.Keys); i++ {
+		g.push(msg.Keys[i], msg.Values[i])
+	}
 }
