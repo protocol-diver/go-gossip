@@ -63,6 +63,10 @@ Packet type (1 byte) <br>
 > 1: PullRequest <br>
 > 2: PullResponse <br>
 
+### Packet handle
+<b>PullRequest</b> - It replies a packet to the requester. However, packets that have already been taken by the requester are excluded. <br>
+<b>PullResponse</b> - Stores the received message in memory. Messages that have already been received will be ignored. <br>
+
 
 ## Transport/Security layer
 Transport layer supports peer-to-peer UDP communication.
