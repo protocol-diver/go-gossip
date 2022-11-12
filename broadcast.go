@@ -97,7 +97,7 @@ func (b *broadcast) timeoutLoop() {
 		keys := b.keys()
 		for _, key := range keys {
 			if _, ok := b.m[key]; !ok {
-				return
+				continue
 			}
 			if b.m[key].deadline.Before(now) {
 				delete(b.m, key)
