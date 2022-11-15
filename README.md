@@ -70,8 +70,10 @@ Packet type (1 byte) <br>
 
 ## Transport/Security layer
 Transport layer supports peer-to-peer UDP communication.
-Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. I'm just considering a method of encrypting and decrypting using a passphrase. <br>
+Security layer resolve the secure between peer to peer trnasmission. It should be possible to add multiple encryption algorithms. I'm just considering a method of encrypting and decrypting using a passphrase(It is also okay to encrypt in the application and then propagate it. In this case, you should set NO-SECURE in config). <br>
 
 Encrypt alogrithm (1 byte) <br>
 > 0: NO-SECURE <br>
 > 1: AES-256-CBC <br>
+
+Max packet size is n.
