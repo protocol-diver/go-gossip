@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rsa"
 	"crypto/sha256"
 )
 
@@ -35,14 +34,6 @@ func (a AES256_CBC) Decrypt(key string, data []byte) ([]byte, error) {
 	plainText := make([]byte, len(data))
 	dec.CryptBlocks(plainText, data)
 	return trimPKCS5(plainText), nil
-}
-
-func (a AES256_CBC) EncryptWithPublicKey(key *rsa.PublicKey, plain []byte) ([]byte, error) {
-	panic("not supported")
-}
-
-func (a AES256_CBC) DecryptWithPrivateKey(key *rsa.PrivateKey, plain []byte) ([]byte, error) {
-	panic("not supported")
 }
 
 func padPKCS7(plainText []byte, blockSize int) []byte {
