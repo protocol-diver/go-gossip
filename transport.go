@@ -9,7 +9,7 @@ type Transport interface {
 	WriteToUDP(b []byte, addr *net.UDPAddr) (int, error)
 }
 
-func multicastWithRawAddress(transport Transport, peers []string, buf []byte) {
+func multicastWithRawAddress(transport Transport, buf []byte, peers []string) {
 	addrs := make([]*net.UDPAddr, 0, len(peers))
 	for _, peer := range peers {
 		addr, err := net.ResolveUDPAddr("udp", peer)
@@ -19,10 +19,10 @@ func multicastWithRawAddress(transport Transport, peers []string, buf []byte) {
 		}
 		addrs = append(addrs, addr)
 	}
-	multicastWithAddress(transport, addrs, buf)
+	multicastWithAddress(transport, buf, addrs)
 }
 
-func multicastWithAddress(transport Transport, addrs []*net.UDPAddr, buf []byte) {
+func multicastWithAddress(transport Transport, buf []byte, addrs []*net.UDPAddr) {
 	for _, addr := range addrs {
 		if _, err := transport.WriteToUDP(buf, addr); err != nil {
 			continue
