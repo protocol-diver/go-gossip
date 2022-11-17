@@ -7,11 +7,12 @@ import (
 
 const (
 	// timeout stands for deletion time of message.
+	// pull count per message = timeout * pullInterval
 	//
 	// message is not deleted exactly every timeout reached.
 	// Since the delete loop also runs once every timeout.
 	// So the minimum is timeout, the maximum is 2*timeout.
-	timeout = 30 * time.Second
+	timeout = 25 * time.Second
 )
 
 // messages stores recent gossip messages.
