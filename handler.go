@@ -1,51 +1,38 @@
 package gogossip
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"log"
 	"net"
-	"sync/atomic"
 )
 
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	label, payload, err := splitLabel(buf)
 	if err != nil {
-		log.Printf("handler: SplitLabel failure, %v", err)
+		log.Printf("handler: splitLabel failure, %v", err)
 		return
 	}
 
 	encType := EncryptType(label.encryptType)
 
-	plain, err := DecryptPayload(encType, g.cfg.passphrase, payload)
+	plain, err := DecryptPayload(payload, encType, g.cfg.passphrase)
 	if err != nil {
-		log.Printf("handler: decryption failure, %v", err)
+		log.Printf("handler: DecryptPayload failure, %v", err)
 		return
 	}
 
 	// Packet to use when we need to send a response.
-	var packet Packet
+	var packets []Packet
 	defer func() {
-		if packet != nil {
-			cipher, err := EncryptPacket(encType, g.cfg.passphrase, packet)
-			if err != nil {
-				log.Printf("handler: encryption failure, %v", err)
-				return
-			}
-			p, err := bytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
-			if err != nil {
-				log.Printf("handler: trasport failture, %v", err)
-				return
-			}
-			if _, err := g.transport.WriteToUDP(p, sender); err != nil {
-				log.Printf("handler: transport filaure, %v", err)
-				return
-			}
+		for _, packet := range packets {
+			g.send(packet, encType)
 		}
 	}()
 
 	switch label.packetType {
 	case PullRequestType:
-		packet = g.pullRequestHandle(plain, encType, sender)
+		packets = g.pullRequestHandle(plain, encType, sender)
 	case PullResponseType:
 		g.pullResponseHandle(plain, encType)
 	default:
@@ -53,16 +40,39 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	}
 }
 
-func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender *net.UDPAddr) Packet {
+// If it is split into bytes after marshaling, the entire data will be lost if lost.
+// Transmit the split data into packets.
+func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender *net.UDPAddr) []Packet {
 	kl, vl := g.messages.itemsWithTouch(sender.String())
 	if len(kl) != len(vl) {
-		log.Printf("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
-		return nil
+		panic("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
 	}
 
-	// TODO(dbadoy): Send it in multiple pieces. Sometimes occur error
-	// about message too big.
-	return &PullResponse{atomic.AddUint32(&g.seq, 1), kl, vl}
+	var packets []Packet
+
+	i := 0
+	for i < len(kl) {
+		prealloc := actualDataSize / (8 + binary.Size(vl[i]))
+		r := &PullResponse{
+			to:     sender,
+			Keys:   make([][8]byte, 0, prealloc),
+			Values: make([][]byte, 0, prealloc),
+		}
+
+		size := 0
+		for ; i < len(kl); i++ {
+			r.Keys = append(r.Keys, kl[i])
+			r.Values = append(r.Values, vl[i])
+
+			size += binary.Size(kl[i]) + binary.Size(vl[i])
+			if size >= actualDataSize {
+				break
+			}
+		}
+		packets = append(packets, r)
+	}
+
+	return packets
 }
 
 func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
@@ -71,8 +81,7 @@ func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
 		return
 	}
 	if len(msg.Keys) != len(msg.Values) {
-		log.Printf("pullResponseHandle: invalid protocol detected, different key value sizes in the packet")
-		return
+		panic("pullResponseHandle: invalid protocol detected, different key value sizes in the packet")
 	}
 
 	for i := 0; i < len(msg.Keys); i++ {
