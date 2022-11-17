@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	NO_SECURE_TYPE  = 0x00
+	NON_SECURE_TYPE = 0x00
 	AES256_CBC_TYPE = 0x01
 )
 
@@ -15,7 +15,7 @@ type EncryptType byte
 
 func (e EncryptType) String() string {
 	switch e {
-	case NO_SECURE_TYPE:
+	case NON_SECURE_TYPE:
 		return "NO-SECURE"
 	case AES256_CBC_TYPE:
 		return "AES256-CBC"
@@ -39,8 +39,8 @@ func (s *Cipher) Is(kind EncryptType) bool {
 
 func newCipher(kind EncryptType) Cipher {
 	switch kind {
-	case NO_SECURE_TYPE:
-		return Cipher{NO_SECURE{}, kind}
+	case NON_SECURE_TYPE:
+		return Cipher{crypto.NON_SECURE{}, kind}
 	case AES256_CBC_TYPE:
 		return Cipher{crypto.AES256_CBC{}, kind}
 	}
@@ -52,28 +52,9 @@ func EncryptPacket(encType EncryptType, passphrase string, packet Packet) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	cipher, err := newCipher(encType).Encrypt(passphrase, b)
-	if err != nil {
-		return nil, err
-	}
-	return cipher, err
+	return newCipher(encType).Encrypt(passphrase, b)
 }
 
-func DecryptPayload(encType EncryptType, passpharse string, payload []byte) ([]byte, error) {
-	plain, err := newCipher(encType).Decrypt(passpharse, payload)
-	if err != nil {
-		return nil, err
-	}
-	return plain, nil
-}
-
-//
-type NO_SECURE struct{}
-
-func (n NO_SECURE) Encrypt(passphrase string, buf []byte) ([]byte, error) {
-	return buf, nil
-}
-
-func (n NO_SECURE) Decrypt(passphrase string, buf []byte) ([]byte, error) {
-	return buf, nil
+func DecryptPayload(payload []byte, encType EncryptType, passpharse string) ([]byte, error) {
+	return newCipher(encType).Decrypt(passpharse, payload)
 }
