@@ -12,11 +12,12 @@ const (
 	gossipNumber = 2
 	//
 	pullInterval = 200 * time.Millisecond
+	//
+	actualDataSize = 512
 )
 
 type Gossiper struct {
 	run uint32
-	seq uint32
 
 	discovery Discovery
 	transport Transport
@@ -30,18 +31,17 @@ type Gossiper struct {
 func NewGossiper(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 	if cfg == nil {
 		cfg = &Config{
-			encryptType: NO_SECURE_TYPE,
+			encryptType: NON_SECURE_TYPE,
 			passphrase:  "",
 		}
 	}
 	gossiper := &Gossiper{
-		seq:       0,
 		discovery: discv,
 		transport: transport,
 		messages: broadcast{
 			m: make(map[[8]byte]message),
 		},
-		pipe: make(chan []byte, 4096),
+		pipe: make(chan []byte, actualDataSize),
 		cfg:  cfg,
 	}
 	return gossiper, nil
@@ -54,6 +54,8 @@ func (g *Gossiper) Start() {
 	go g.messages.timeoutLoop()
 	go g.readLoop()
 	go g.pullLoop()
+	//
+	atomic.StoreUint32(&g.run, 1)
 }
 
 func (g *Gossiper) pullLoop() {
@@ -61,25 +63,20 @@ func (g *Gossiper) pullLoop() {
 	defer ticker.Stop()
 	for {
 		<-ticker.C
+
 		// Request PullRequest to random peers.
 		msg := &PullRequest{}
 
-		// Encryption.
-		buf, err := EncryptPacket(g.cfg.encryptType, g.cfg.passphrase, msg)
+		// Since it is the starting point of the gossip protocol.
+		// So it follows the encType of this peer.
+		p, err := marshalPacketWithEncryption(msg, g.cfg.encryptType, g.cfg.passphrase)
 		if err != nil {
-			log.Printf("pullLoop: encryption failure %v", err)
-			continue
-		}
-
-		// Labeling.
-		p, err := bytesToLabel([]byte{msg.Kind(), byte(g.cfg.encryptType)}).combine(buf)
-		if err != nil {
-			log.Printf("pullLoop: labeling failure %v", err)
+			log.Printf("pullLoop: marshalPacketWithEncryption failure %v", err)
 			continue
 		}
 
 		// Choose random peers and send.
-		multicastWithRawAddress(g.transport, g.selectRandomPeers(gossipNumber), p)
+		multicastWithRawAddress(g.transport, p, g.selectRandomPeers(gossipNumber))
 	}
 }
 
@@ -129,4 +126,13 @@ func (g *Gossiper) selectRandomPeers(n int) []string {
 		selected = append(selected, peers[random.Intn(n)])
 	}
 	return selected
+}
+
+func (g *Gossiper) send(packet Packet, encType EncryptType) error {
+	b, err := marshalPacketWithEncryption(packet, encType, g.cfg.passphrase)
+	if err != nil {
+		return err
+	}
+	_, err = g.transport.WriteToUDP(b, packet.To())
+	return err
 }
