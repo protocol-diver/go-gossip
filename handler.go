@@ -3,22 +3,21 @@ package gogossip
 import (
 	"encoding/binary"
 	"encoding/json"
-	"log"
 	"net"
 )
 
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	label, payload, err := splitLabel(buf)
 	if err != nil {
-		log.Printf("handler: splitLabel failure, %v", err)
+		g.logger.Printf("handler: splitLabel failure, %v", err)
 		return
 	}
 
 	encType := EncryptType(label.encryptType)
 
-	plain, err := DecryptPayload(payload, encType, g.cfg.passphrase)
+	plain, err := DecryptPayload(payload, encType, g.cfg.Passphrase)
 	if err != nil {
-		log.Printf("handler: DecryptPayload failure, %v", err)
+		g.logger.Printf("handler: DecryptPayload failure, %v", err)
 		return
 	}
 
@@ -36,7 +35,7 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	case PullResponseType:
 		g.pullResponseHandle(plain, encType)
 	default:
-		log.Printf("hander: invalid packet detectd, type: %d sender: %s", label.packetType, sender.String())
+		g.logger.Printf("hander: invalid packet detectd, type: %d sender: %s", label.packetType, sender.String())
 	}
 }
 
@@ -85,6 +84,6 @@ func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
 	}
 
 	for i := 0; i < len(msg.Keys); i++ {
-		g.push(msg.Keys[i], msg.Values[i])
+		g.push(msg.Keys[i], msg.Values[i], true)
 	}
 }
