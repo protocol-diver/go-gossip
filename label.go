@@ -16,8 +16,8 @@ var (
 var labelTotalSize = binary.Size(label{})
 
 type label struct {
-	packetType  byte
-	encryptType byte
+	packetType  PacketType
+	encryptType EncryptType
 	// tempSize    [4]byte
 }
 
@@ -33,8 +33,8 @@ func (l label) combine(buf []byte) ([]byte, error) {
 
 func (l label) bytes() []byte {
 	b := make([]byte, labelTotalSize)
-	b[0] = l.packetType
-	b[1] = l.encryptType
+	b[0] = byte(l.packetType)
+	b[1] = byte(l.encryptType)
 	// copy(b[2:6], l.tempSize[:])
 	return b
 }
@@ -47,7 +47,7 @@ func bytesToLabel(buf []byte) *label {
 	// copy(tempSize[:], buf[2:4])
 
 	return &label{
-		buf[0], buf[1], // tempSize,
+		PacketType(buf[0]), EncryptType(buf[1]), // tempSize,
 	}
 }
 
