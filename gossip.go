@@ -51,7 +51,7 @@ func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 		messages: broadcast{
 			m: make(map[[8]byte]message),
 		},
-		pipe: make(chan []byte, actualDataSize),
+		pipe: make(chan []byte, 4096),
 	}
 	return gossiper, nil
 }
@@ -86,7 +86,7 @@ func (g *Gossiper) pullLoop() {
 		//
 		// Since it is the starting point of the gossip protocol.
 		// So it follows the encType of this peer.
-		p, err := marshalPacketWithEncryption(&PullRequest{}, g.cfg.EncType, g.cfg.Passphrase)
+		p, err := marshalWithEncryption(&PullRequest{}, g.cfg.EncType, g.cfg.Passphrase)
 		if err != nil {
 			g.logger.Printf("pullLoop: marshalPacketWithEncryption failure %v", err)
 			continue
@@ -136,7 +136,7 @@ func (g *Gossiper) selectRandomPeers(n int) []string {
 }
 
 func (g *Gossiper) send(packet Packet, encType EncryptType) (int, error) {
-	b, err := marshalPacketWithEncryption(packet, encType, g.cfg.Passphrase)
+	b, err := marshalWithEncryption(packet, encType, g.cfg.Passphrase)
 	if err != nil {
 		return 0, err
 	}

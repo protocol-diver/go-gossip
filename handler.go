@@ -7,7 +7,7 @@ import (
 )
 
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
-	label, plain, err := unmarshalPayloadWithDecryption(buf, g.cfg.Passphrase)
+	label, plain, err := unmarshalWithDecryption(buf, g.cfg.Passphrase)
 	if err != nil {
 		g.logger.Printf("handler: unmarshalPayloadWithDecryption failure %v", err)
 	}

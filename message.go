@@ -43,7 +43,7 @@ type (
 	}
 )
 
-func marshalPacketWithEncryption(packet Packet, encType EncryptType, passphrase string) ([]byte, error) {
+func marshalWithEncryption(packet Packet, encType EncryptType, passphrase string) ([]byte, error) {
 	cipher, err := encryptPacket(encType, passphrase, packet)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func marshalPacketWithEncryption(packet Packet, encType EncryptType, passphrase 
 	return bytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
 }
 
-func unmarshalPayloadWithDecryption(buf []byte, passphrase string) (*label, []byte, error) {
+func unmarshalWithDecryption(buf []byte, passphrase string) (*label, []byte, error) {
 	label, payload, err := splitLabel(buf)
 	if err != nil {
 		return nil, nil, err
