@@ -27,7 +27,7 @@ type Gossiper struct {
 	pipe     chan []byte
 }
 
-func NewGossiper(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
+func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 	logger := log.New(os.Stdout, "[Gossip] ", log.LstdFlags)
 
 	if cfg == nil {
