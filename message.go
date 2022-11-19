@@ -21,6 +21,18 @@ const (
 	PullResponseType = 0x02
 )
 
+type PacketType byte
+
+func (p PacketType) String() string {
+	switch p {
+	case PullRequestType:
+		return "PullRequest"
+	case PullResponseType:
+		return "PullResponse"
+	}
+	return ""
+}
+
 type (
 	PullRequest struct {
 	}
@@ -32,11 +44,23 @@ type (
 )
 
 func marshalPacketWithEncryption(packet Packet, encType EncryptType, passphrase string) ([]byte, error) {
-	cipher, err := EncryptPacket(encType, passphrase, packet)
+	cipher, err := encryptPacket(encType, passphrase, packet)
 	if err != nil {
 		return nil, err
 	}
 	return bytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
+}
+
+func unmarshalPayloadWithDecryption(buf []byte, passphrase string) (*label, []byte, error) {
+	label, payload, err := splitLabel(buf)
+	if err != nil {
+		return nil, nil, err
+	}
+	plain, err := decryptPayload(payload, EncryptType(label.encryptType), passphrase)
+	if err != nil {
+		return nil, nil, err
+	}
+	return label, plain, err
 }
 
 func (req *PullRequest) Kind() byte       { return PullRequestType }
