@@ -7,33 +7,24 @@ import (
 )
 
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
-	label, payload, err := splitLabel(buf)
+	label, plain, err := unmarshalPayloadWithDecryption(buf, g.cfg.Passphrase)
 	if err != nil {
-		g.logger.Printf("handler: splitLabel failure, %v", err)
-		return
-	}
-
-	encType := EncryptType(label.encryptType)
-
-	plain, err := DecryptPayload(payload, encType, g.cfg.Passphrase)
-	if err != nil {
-		g.logger.Printf("handler: DecryptPayload failure, %v", err)
-		return
+		g.logger.Printf("handler: unmarshalPayloadWithDecryption failure %v", err)
 	}
 
 	// Packet to use when we need to send a response.
 	var packets []Packet
 	defer func() {
 		for _, packet := range packets {
-			g.send(packet, encType)
+			g.send(packet, label.encryptType)
 		}
 	}()
 
 	switch label.packetType {
 	case PullRequestType:
-		packets = g.pullRequestHandle(plain, encType, sender)
+		packets = g.pullRequestHandle(plain, label.encryptType, sender)
 	case PullResponseType:
-		g.pullResponseHandle(plain, encType)
+		g.pullResponseHandle(plain, label.encryptType)
 	default:
 		g.logger.Printf("hander: invalid packet detectd, type: %d sender: %s", label.packetType, sender.String())
 	}
