@@ -56,6 +56,16 @@ func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 	return gossiper, nil
 }
 
+func (g *Gossiper) Start() {
+	if atomic.LoadUint32(&g.run) == 1 {
+		return
+	}
+	go g.messages.timeoutLoop()
+	go g.readLoop()
+	go g.pullLoop()
+	atomic.StoreUint32(&g.run, 1)
+}
+
 // Surface to application for starts gossip.
 func (g *Gossiper) Push(buf []byte) {
 	g.push(idGenerator(), buf, false)
@@ -66,14 +76,20 @@ func (g *Gossiper) MessagePipe() chan []byte {
 	return g.pipe
 }
 
-func (g *Gossiper) Start() {
-	if atomic.LoadUint32(&g.run) == 1 {
-		return
+func (g *Gossiper) readLoop() {
+	for {
+		// Temprary packet limit. Need basis.
+		buf := make([]byte, 8192)
+		n, sender, err := g.transport.ReadFromUDP(buf)
+		if err != nil {
+			g.logger.Printf("readLoop: read UDP packet failure %v\n", err)
+			continue
+		}
+
+		// Slice actual data.
+		r := buf[:n]
+		go g.handler(r, sender)
 	}
-	go g.messages.timeoutLoop()
-	go g.readLoop()
-	go g.pullLoop()
-	atomic.StoreUint32(&g.run, 1)
 }
 
 func (g *Gossiper) pullLoop() {
@@ -88,28 +104,12 @@ func (g *Gossiper) pullLoop() {
 		// So it follows the encType of this peer.
 		p, err := marshalWithEncryption(&PullRequest{}, g.cfg.EncType, g.cfg.Passphrase)
 		if err != nil {
-			g.logger.Printf("pullLoop: marshalPacketWithEncryption failure %v", err)
+			g.logger.Printf("pullLoop: marshalPacketWithEncryption failure %v\n", err)
 			continue
 		}
 
 		// Choose random peers and send.
 		multicastWithRawAddress(g.transport, p, g.selectRandomPeers(g.cfg.GossipNumber))
-	}
-}
-
-func (g *Gossiper) readLoop() {
-	for {
-		// Temprary packet limit. Need basis.
-		buf := make([]byte, 8192)
-		n, sender, err := g.transport.ReadFromUDP(buf)
-		if err != nil {
-			g.logger.Printf("readLoop: read UDP packet failure %v", err)
-			continue
-		}
-
-		// Slice actual data.
-		r := buf[:n]
-		go g.handler(r, sender)
 	}
 }
 
