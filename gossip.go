@@ -82,7 +82,7 @@ func (g *Gossiper) readLoop() {
 		buf := make([]byte, 8192)
 		n, sender, err := g.transport.ReadFromUDP(buf)
 		if err != nil {
-			g.logger.Printf("readLoop: read UDP packet failure %v\n", err)
+			g.logger.Printf("readLoop: read UDP packet failure, %v\n", err)
 			continue
 		}
 
@@ -104,7 +104,7 @@ func (g *Gossiper) pullLoop() {
 		// So it follows the encType of this peer.
 		p, err := marshalWithEncryption(&PullRequest{}, g.cfg.EncType, g.cfg.Passphrase)
 		if err != nil {
-			g.logger.Printf("pullLoop: marshalPacketWithEncryption failure %v\n", err)
+			g.logger.Printf("pullLoop: marshalPacketWithEncryption failure, %v\n", err)
 			continue
 		}
 

@@ -9,7 +9,7 @@ import (
 func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	label, plain, err := unmarshalWithDecryption(buf, g.cfg.Passphrase)
 	if err != nil {
-		g.logger.Printf("handler: unmarshalPayloadWithDecryption failure %v\n", err)
+		g.logger.Printf("handler: unmarshalPayloadWithDecryption failure, %v (<-- %v)\n", err, sender)
 		return
 	}
 
@@ -27,7 +27,7 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	case PullResponseType:
 		g.pullResponseHandle(plain)
 	default:
-		g.logger.Printf("hander: invalid packet detectd, type: %d sender: %s\n", label.packetType, sender.String())
+		g.logger.Printf("hander: invalid packet detectd, type: %d (<-- %v)\n", label.packetType, sender)
 	}
 }
 
@@ -69,7 +69,7 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 func (g *Gossiper) pullResponseHandle(payload []byte) {
 	var msg PullResponse
 	if err := json.Unmarshal(payload, &msg); err != nil {
-		g.logger.Printf("pullResponseHandle: Unmarshal failure %v\n", err)
+		g.logger.Printf("pullResponseHandle: Unmarshal failure, %v\n", err)
 		return
 	}
 	if len(msg.Keys) != len(msg.Values) {
