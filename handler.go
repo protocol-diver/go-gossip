@@ -23,9 +23,9 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 
 	switch label.packetType {
 	case PullRequestType:
-		packets = g.pullRequestHandle(plain, label.encryptType, sender)
+		packets = g.pullRequestHandle(plain, sender)
 	case PullResponseType:
-		g.pullResponseHandle(plain, label.encryptType)
+		g.pullResponseHandle(plain)
 	default:
 		g.logger.Printf("hander: invalid packet detectd, type: %d sender: %s\n", label.packetType, sender.String())
 	}
@@ -33,7 +33,7 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 
 // If it is split into bytes after marshaling, the entire data will be lost if lost.
 // Transmit the split data into packets.
-func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender *net.UDPAddr) []Packet {
+func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Packet {
 	kl, vl := g.messages.itemsWithTouch(sender.String())
 	if len(kl) != len(vl) {
 		panic("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
@@ -66,7 +66,7 @@ func (g *Gossiper) pullRequestHandle(payload []byte, enctype EncryptType, sender
 	return packets
 }
 
-func (g *Gossiper) pullResponseHandle(payload []byte, encType EncryptType) {
+func (g *Gossiper) pullResponseHandle(payload []byte) {
 	var msg PullResponse
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		g.logger.Printf("pullResponseHandle: Unmarshal failure %v\n", err)
