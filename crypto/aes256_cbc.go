@@ -34,7 +34,11 @@ func (a AES256_CBC) Decrypt(key string, data []byte) ([]byte, error) {
 	dec := cipher.NewCBCDecrypter(block, iv)
 	plainText := make([]byte, len(data))
 	dec.CryptBlocks(plainText, data)
-	return trimPKCS5(plainText)
+	trimed := trimPKCS5(plainText)
+	if trimed == nil {
+		return nil, errors.New("invalid passphrase")
+	}
+	return trimed, nil
 }
 
 func padPKCS7(plainText []byte, blockSize int) []byte {
@@ -43,11 +47,11 @@ func padPKCS7(plainText []byte, blockSize int) []byte {
 	return append(plainText, padText...)
 }
 
-func trimPKCS5(text []byte) ([]byte, error) {
+func trimPKCS5(text []byte) []byte {
 	padding := text[len(text)-1]
 	idx := len(text) - int(padding)
 	if idx < 0 {
-		return nil, errors.New("invalid passphrase")
+		return nil
 	}
-	return text[:idx], nil
+	return text[:idx]
 }
