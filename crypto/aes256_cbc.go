@@ -11,33 +11,47 @@ import (
 type AES256_CBC struct{}
 
 func (a AES256_CBC) Encrypt(key string, plain []byte) ([]byte, error) {
-	k := sha256.Sum256([]byte(key))
-	block, err := aes.NewCipher(k[:])
+	var (
+		kb = sha256.Sum256([]byte(key))
+		iv = kb[:aes.BlockSize]
+	)
+
+	block, err := aes.NewCipher(kb[:])
 	if err != nil {
 		return nil, err
 	}
-	iv := k[:aes.BlockSize]
-	enc := cipher.NewCBCEncrypter(block, iv)
+
 	padded := padPKCS7(plain, block.BlockSize())
+
+	enc := cipher.NewCBCEncrypter(block, iv)
 	cipherText := make([]byte, len(padded))
+
 	enc.CryptBlocks(cipherText, padded)
+
 	return cipherText, nil
 }
 
 func (a AES256_CBC) Decrypt(key string, data []byte) ([]byte, error) {
-	k := sha256.Sum256([]byte(key))
-	block, err := aes.NewCipher(k[:])
+	var (
+		kb = sha256.Sum256([]byte(key))
+		iv = kb[:aes.BlockSize]
+	)
+
+	block, err := aes.NewCipher(kb[:])
 	if err != nil {
 		return nil, err
 	}
-	iv := k[:aes.BlockSize]
+
 	dec := cipher.NewCBCDecrypter(block, iv)
 	plainText := make([]byte, len(data))
+
 	dec.CryptBlocks(plainText, data)
+
 	trimed := trimPKCS5(plainText)
 	if trimed == nil {
 		return nil, errors.New("invalid passphrase")
 	}
+
 	return trimed, nil
 }
 
