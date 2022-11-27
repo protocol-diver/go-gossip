@@ -38,6 +38,9 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 	if len(kl) != len(vl) {
 		panic("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
 	}
+	if len(kl) == 0 {
+		return nil
+	}
 
 	var packets []Packet
 
