@@ -125,13 +125,27 @@ func (g *Gossiper) selectRandomPeers(n int) []string {
 	if len(peers) <= n {
 		return peers
 	}
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// TODO(dbadoy): Avoid duplicate selection.
-	selected := make([]string, 0, n)
-	for i := 0; i < n; i++ {
-		selected = append(selected, peers[random.Intn(n)])
+	var (
+		random   = rand.New(rand.NewSource(time.Now().UnixNano()))
+		indices  = make([]int, 0, n)
+		selected = make([]string, 0, n)
+	)
+
+	// Avoid duplicate selection.
+	for r := random.Intn(n); len(indices) != n; r = random.Intn(n) {
+		for _, v := range indices {
+			if v == r {
+				continue
+			}
+		}
+		indices = append(indices, r)
 	}
+
+	for i := 0; i < n; i++ {
+		selected = append(selected, peers[indices[i]])
+	}
+
 	return selected
 }
 
