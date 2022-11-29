@@ -1,6 +1,7 @@
 package gogossip
 
 import (
+	"errors"
 	"log"
 	"math/rand"
 	"os"
@@ -10,9 +11,11 @@ import (
 
 const (
 	//
-	pullInterval = 200 * time.Millisecond
+	pullInterval = 100 * time.Millisecond
 	//
-	actualDataSize = 512
+	maxPacketSize = 61440
+	//
+	actualPayloadSize = maxPacketSize - 56320
 )
 
 type Gossiper struct {
@@ -23,7 +26,7 @@ type Gossiper struct {
 	discovery Discovery
 	transport Transport
 
-	messages broadcast
+	messages *broadcast
 	pipe     chan []byte
 }
 
@@ -41,17 +44,21 @@ func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 		logger.Println("mininum size of GossipNumber is 2. set default value [2]")
 		cfg.GossipNumber = 2
 	}
+
 	logger.Printf("configured, GossipNumber: %d, EncryptType: %s\n", cfg.GossipNumber, cfg.EncType.String())
+
+	broadcast, err := newBroadcast(cfg.FilterWithStorage)
+	if err != nil {
+		return nil, err
+	}
 
 	gossiper := &Gossiper{
 		cfg:       cfg,
 		logger:    logger,
 		discovery: discv,
 		transport: transport,
-		messages: broadcast{
-			m: make(map[[8]byte]message),
-		},
-		pipe: make(chan []byte, 4096),
+		messages:  broadcast,
+		pipe:      make(chan []byte, 4096),
 	}
 	return gossiper, nil
 }
@@ -60,15 +67,21 @@ func (g *Gossiper) Start() {
 	if atomic.LoadUint32(&g.run) == 1 {
 		return
 	}
-	go g.messages.timeoutLoop()
 	go g.readLoop()
 	go g.pullLoop()
 	atomic.StoreUint32(&g.run, 1)
 }
 
 // Surface to application for starts gossip.
-func (g *Gossiper) Push(buf []byte) {
+func (g *Gossiper) Push(buf []byte) error {
+	if len(buf) > actualPayloadSize {
+		return errors.New("too big")
+	}
+	if g.messages.size() > 256 {
+		return errors.New("too many push")
+	}
 	g.push(idGenerator(), buf, false)
+	return nil
 }
 
 // Surface to application for send newly messages.
@@ -76,10 +89,14 @@ func (g *Gossiper) MessagePipe() chan []byte {
 	return g.pipe
 }
 
+func (g *Gossiper) Size() int {
+	return g.messages.size()
+}
+
 func (g *Gossiper) readLoop() {
 	for {
 		// Temprary packet limit. Need basis.
-		buf := make([]byte, 8192)
+		buf := make([]byte, maxPacketSize)
 		n, sender, err := g.transport.ReadFromUDP(buf)
 		if err != nil {
 			g.logger.Printf("readLoop: read UDP packet failure, %v\n", err)
