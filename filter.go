@@ -16,11 +16,7 @@ func newFilter(filterWithStorage string) (filter, error) {
 	if filterWithStorage == "" {
 		// bloom filter
 	} else {
-		db, err := leveldb.OpenFile(filterWithStorage, nil)
-		if err != nil {
-			return nil, err
-		}
-		return &storage{db}, nil
+		return newStorageFilter(filterWithStorage)
 	}
 	return nil, errors.New("non")
 }
@@ -28,6 +24,14 @@ func newFilter(filterWithStorage string) (filter, error) {
 // level db
 type storage struct {
 	db *leveldb.DB
+}
+
+func newStorageFilter(path string) (*storage, error) {
+	db, err := leveldb.OpenFile(path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &storage{db}, nil
 }
 
 func (s *storage) Put(key []byte, value []byte) error {
