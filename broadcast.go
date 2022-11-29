@@ -48,7 +48,7 @@ func (b *broadcast) items() ([][8]byte, [][]byte) {
 			vl = append(vl, value.([]byte))
 
 			go func(k interface{}) {
-				time.Sleep(1000 * time.Millisecond)
+				time.Sleep(5 * pullInterval)
 				b.c.Remove(k)
 			}(key)
 		}
