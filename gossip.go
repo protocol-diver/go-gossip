@@ -44,10 +44,13 @@ func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 		logger.Println("mininum size of GossipNumber is 2. set default value [2]")
 		cfg.GossipNumber = 2
 	}
+	filter, err := newFilter(cfg.FilterWithStorage)
+	if err != nil {
+		return nil, err
+	}
+	logger.Printf("configured, FilterMod: %s, GossipNumber: %d, EncryptType: %s\n", filter.Mod(), cfg.GossipNumber, cfg.EncType.String())
 
-	logger.Printf("configured, GossipNumber: %d, EncryptType: %s\n", cfg.GossipNumber, cfg.EncType.String())
-
-	broadcast, err := newBroadcast(cfg.FilterWithStorage)
+	broadcast, err := newBroadcast(filter)
 	if err != nil {
 		return nil, err
 	}
