@@ -5,10 +5,18 @@ import (
 )
 
 type Config struct {
+	// If the value is nil, it means a memory filter. To use
+	// the storage filter, set the path to save the data.
 	FilterWithStorage string
-	GossipNumber      int
-	EncType           EncryptType
-	Passphrase        string
+
+	// GossipNumber means the number of peers to make pull
+	// requests per pullInterval. This number must be greater
+	// than 2, and if set to greater than the total number of
+	// existing peers, it means broadcasting.
+	GossipNumber int
+
+	EncType    EncryptType
+	Passphrase string
 }
 
 func DefaultConfig() *Config {
