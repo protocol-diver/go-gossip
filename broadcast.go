@@ -11,17 +11,7 @@ type broadcast struct {
 	f filter
 }
 
-func newBroadcast(filterWithStorage string) (*broadcast, error) {
-	var f filter
-	if filterWithStorage != "" {
-		// db, err := leveldb.OpenFile(path, nil)
-		// if err != nil {
-		// 	return nil, err
-		// }
-	} else {
-		_ = f
-	}
-
+func newBroadcast(f filter) (*broadcast, error) {
 	cache, err := lru.New(256)
 	if err != nil {
 		return nil, err
