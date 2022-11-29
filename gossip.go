@@ -13,12 +13,12 @@ const (
 	//
 	pullInterval = 100 * time.Millisecond
 
-	//
-	maxPacketSize = 61440
+	// 2^18(65535) - ip header(20) - udp header(8)
+	maxPacketSize = 65507
 
 	// actualPayloadSize is the result of calculating the overhead
 	// in the process of marshaling the PullResponse.
-	actualPayloadSize = maxPacketSize - 56320
+	actualPayloadSize = maxPacketSize - 61440
 )
 
 type Gossiper struct {
