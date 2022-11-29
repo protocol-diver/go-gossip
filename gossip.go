@@ -12,9 +12,12 @@ import (
 const (
 	//
 	pullInterval = 100 * time.Millisecond
+
 	//
 	maxPacketSize = 61440
-	//
+
+	// actualPayloadSize is the result of calculating the overhead
+	// in the process of marshaling the PullResponse.
 	actualPayloadSize = maxPacketSize - 56320
 )
 
