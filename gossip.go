@@ -83,7 +83,7 @@ func (g *Gossiper) Push(buf []byte) error {
 	if len(buf) > actualPayloadSize {
 		return errors.New("too big")
 	}
-	if g.messages.size() > 256 {
+	if g.messages.size() > cacheSize {
 		return errors.New("too many push")
 	}
 	g.push(idGenerator(), buf, false)

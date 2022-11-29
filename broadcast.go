@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	cacheSize = 256
+	cacheSize = 512
 )
 
 type broadcast struct {
@@ -35,7 +35,7 @@ func (b *broadcast) add(key [8]byte, value []byte) bool {
 
 	// Register in the filter and saving the value in the cache.
 	b.c.Add(key, value)
-	if err := b.f.Put(key[:], nil); err != nil {
+	if err := b.f.Put(key[:]); err != nil {
 		panic(err)
 	}
 
