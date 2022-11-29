@@ -5,9 +5,10 @@ import (
 )
 
 type Config struct {
-	GossipNumber int
-	EncType      EncryptType
-	Passphrase   string
+	FilterWithStorage string
+	GossipNumber      int
+	EncType           EncryptType
+	Passphrase        string
 }
 
 func DefaultConfig() *Config {
