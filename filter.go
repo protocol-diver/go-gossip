@@ -6,8 +6,20 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+// filter is a data structure to check whether a message
+// has been received. The library should ignore messages
+// that have already been received and only accept new
+// messages. In cases sensitive to duplicate messages,
+// storage is used to maintain filter even when the node
+// is restarted. Memory filter can be used if you are not
+// very sensitive to duplicate messages.
 type filter interface {
-	Put(key []byte, value []byte) error
+	// Registers received messages in filter. Only need to enter
+	// the key of the received message in the Put parameter. The
+	// corresponding Value is stored as nil (only check if it has
+	// been received).
+	Put(key []byte) error
+
 	Has(key []byte) bool
 	Mod() string
 }
@@ -22,23 +34,23 @@ func newFilter(filterWithStorage string) (filter, error) {
 }
 
 // level db
-type storage struct {
+type storageFilter struct {
 	db *leveldb.DB
 }
 
-func newStorageFilter(path string) (*storage, error) {
+func newStorageFilter(path string) (*storageFilter, error) {
 	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &storage{db}, nil
+	return &storageFilter{db}, nil
 }
 
-func (s *storage) Put(key []byte, value []byte) error {
-	return s.db.Put(key, value, nil)
+func (s *storageFilter) Put(key []byte) error {
+	return s.db.Put(key, nil, nil)
 }
 
-func (s *storage) Has(key []byte) bool {
+func (s *storageFilter) Has(key []byte) bool {
 	has, err := s.db.Has(key, nil)
 	if err != nil {
 		panic(err)
@@ -46,9 +58,11 @@ func (s *storage) Has(key []byte) bool {
 	return has
 }
 
-func (*storage) Mod() string { return "LevelDB" }
+func (*storageFilter) Mod() string { return "LevelDB" }
 
 // bloom filter
-type memory struct {
+type memoryFilter struct {
 	//
 }
+
+func (*memoryFilter) Mod() string { return "BloomFilter" }
