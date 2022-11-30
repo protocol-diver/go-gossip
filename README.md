@@ -19,12 +19,12 @@ It's forcus on gossip through relying on discovery layer from outside.
 
 # Layer
 << LAYER IMAGE >> <br><br>
-## Discovery layer
-Discovery layer serves as the managed peer table. That could be static peer table, also could dynamic peer table(like DHT). <br>
+## Registry layer
+Registry layer serves as the managed peer table. That could be static peer table, also could dynamic peer table(like DHT). <br>
 The required(MUST) method is Gossipiers. Gossipiers is used to select random peers to send gossip messages to. <br>
 
 ```go
-type Discovery interface {
+type Registry interface {
 	Gossipiers() []string
 }
 ```
