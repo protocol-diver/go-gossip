@@ -18,10 +18,10 @@ func TestDuplicateAdd(t *testing.T) {
 	prop.add([8]byte{1, 2, 3, 4, 5, 6, 7, 8}, []byte{1})
 
 	if prop.add([8]byte{1, 2, 3, 4, 5, 6, 7, 8}, []byte{1}) {
-		t.Fatal("TestDuplicateAdd failure, occured duplicate add")
+		t.Fatal("TestDuplicateAdd failure, duplicate addition occurs")
 	}
 	if !prop.add([8]byte{0, 0, 0, 0, 0, 0, 0, 0}, []byte{1}) {
-		t.Fatal("TestDuplicateAdd failure, failed add newly message")
+		t.Fatal("TestDuplicateAdd failure, failed to add new message")
 	}
 }
 
