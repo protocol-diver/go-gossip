@@ -20,12 +20,17 @@ func newBroadcast(f filter) (*broadcast, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &broadcast{cache, f}, nil
+	return &broadcast{
+		c: cache,
+		f: f,
+	}, nil
 }
 
 func (b *broadcast) add(key [8]byte, value []byte) bool {
 	// It is skipped if the corresponding key exists
 	// in the filter or cache.
+	//
+	// hold mu?
 	if has := b.f.Has(key[:]); has {
 		return false
 	}
