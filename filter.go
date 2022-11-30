@@ -23,7 +23,7 @@ type filter interface {
 	// or not.
 	Has(key []byte) bool
 
-	// Mod is simply a method for logging. It should return which
+	// Mod is simply method for logging. It should return which
 	// filter implementation it is.
 	Mod() string
 }
