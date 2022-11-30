@@ -10,6 +10,11 @@ const (
 	cacheSize = 512
 )
 
+// broadcast is a data structure required for peers to use
+// broadcast. It manages new messages to propagate to other
+// peers. determines whether a message is received when it
+// is received, and ignores it if it has already been
+// received.
 type broadcast struct {
 	c *lru.Cache // TODO: temp impl. Need impl MFU
 	f filter
