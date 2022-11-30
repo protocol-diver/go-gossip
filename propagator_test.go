@@ -21,7 +21,7 @@ func TestDuplicateAdd(t *testing.T) {
 		t.Fatal("TestDuplicateAdd failure, occured duplicate add")
 	}
 	if !prop.add([8]byte{0, 0, 0, 0, 0, 0, 0, 0}, []byte{1}) {
-		t.Fatal("TestDuplicateAdd failure, failed newly message add")
+		t.Fatal("TestDuplicateAdd failure, failed add newly message")
 	}
 }
 
