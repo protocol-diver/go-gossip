@@ -20,14 +20,14 @@ type Gossiper struct {
 	cfg    *Config
 	logger *log.Logger
 
-	discovery Discovery
+	registry  Registry
 	transport Transport
 
 	messages broadcast
 	pipe     chan []byte
 }
 
-func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
+func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 	logger := log.New(os.Stdout, "[Gossip] ", log.LstdFlags)
 
 	if cfg == nil {
@@ -46,7 +46,7 @@ func New(discv Discovery, transport Transport, cfg *Config) (*Gossiper, error) {
 	gossiper := &Gossiper{
 		cfg:       cfg,
 		logger:    logger,
-		discovery: discv,
+		registry:  reg,
 		transport: transport,
 		messages: broadcast{
 			m: make(map[[8]byte]message),
@@ -121,7 +121,7 @@ func (g *Gossiper) push(key [8]byte, value []byte, remote bool) {
 
 // Select random peers.
 func (g *Gossiper) selectRandomPeers(n int) []string {
-	peers := g.discovery.Gossipiers()
+	peers := g.registry.Gossipiers()
 	if len(peers) <= n {
 		return peers
 	}

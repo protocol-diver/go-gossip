@@ -2,8 +2,6 @@ package utils
 
 import "sync"
 
-type StaticPeers map[string]string
-
 type RegistryGossip struct {
 	mu sync.Mutex
 	m  map[string]string
