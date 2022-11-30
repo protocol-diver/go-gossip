@@ -121,7 +121,7 @@ func (g *Gossiper) readLoop() {
 		}
 
 		r := buf[:n]
-		go g.handler(r, sender)
+		g.handler(r, sender)
 	}
 }
 
