@@ -6,8 +6,7 @@ Gossip is a communication protocol that delivers messages in a distributed syste
 The point is that each node transmits data while periodically exchanging metadata based on TCP/UDP without a broadcast master. <br>
 In general, each node periodically performs health checks of other nodes and communicates with them, but this library relies on an externally imported discovery layer. <br>
 The gossip protocol is divided into two main categories: Push and Pull. If implemented as a push, it becomes inefficient if a large number of peers are already infected. If implemented as Pull, it will propagate efficiently, but there is a point to be concerned about because the message that needs to be propagated to the peer needs to be managed. <br>
-This project implements the Pull-based Gossip protocol. That's why we need to implement a way to send a new message when another node requests it. <br>
-In this library, it consists of two parts, 'filter'' that checks whether a message is received and 'cache' that stores the message for propagation. <br>
+This project implements the Pull-based Gossip protocol. That's why we need to implement a way to send a new message when another node requests it. In this library, it consists of two parts, 'filter' that checks whether a message is received and 'cache' that stores the message for propagation. <br>
 
 Take a look at the list of supported features below. <br>
 
