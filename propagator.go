@@ -35,15 +35,13 @@ func newPropagator(f filter) (*propagator, error) {
 func (p *propagator) add(key [8]byte, value []byte) bool {
 	// It is skipped if the corresponding key exists
 	// in the filter or cache.
-	//
-	// hold mu?
-	if has := p.f.Has(key[:]); has {
-		return false
-	}
 	if contain := p.c.Contains(key); contain {
 		return false
 	}
-
+	if has := p.f.Has(key[:]); has {
+		return false
+	}
+	
 	// Register in the filter and saving the value in the cache.
 	p.c.Add(key, value)
 	if err := p.f.Put(key[:]); err != nil {
