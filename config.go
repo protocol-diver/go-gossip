@@ -1,8 +1,15 @@
 package gogossip
 
 import (
-	"fmt"
+	"errors"
 	"io/fs"
+)
+
+var (
+	errInvalidGossipNumber = errors.New("invalid GossipNumber")
+	errInvalidFilePath     = errors.New("invalid FilterWithStorage")
+	errInvalidEncryptType  = errors.New("invalid EncryptType")
+	errRequirePassphrase   = errors.New("required Passphrase")
 )
 
 type Config struct {
@@ -30,16 +37,20 @@ func DefaultConfig() *Config {
 }
 
 func (c *Config) validate() error {
-	if c.EncType.String() == "" {
-		return fmt.Errorf("invalid EncryptType %d", c.EncType)
-	}
-	if c.EncType != NON_SECURE_TYPE && c.Passphrase == "" {
-		return fmt.Errorf("Passphrase required")
+	if c.GossipNumber < 2 {
+		return errInvalidGossipNumber
 	}
 	if c.FilterWithStorage != "" {
 		if !fs.ValidPath(c.FilterWithStorage) {
-			return fmt.Errorf("invalid FilterWithStorage '%s' is not a file path", c.FilterWithStorage)
+			return errInvalidFilePath
 		}
 	}
+	if c.EncType.String() == "" {
+		return errInvalidEncryptType
+	}
+	if c.EncType != NON_SECURE_TYPE && c.Passphrase == "" {
+		return errRequirePassphrase
+	}
+
 	return nil
 }
