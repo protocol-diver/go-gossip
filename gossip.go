@@ -48,13 +48,14 @@ func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 		cfg = DefaultConfig()
 		logger.Println("config is nil. use default config")
 	}
-	if err := cfg.validate(); err != nil {
-		return nil, err
-	}
 	if cfg.GossipNumber < 2 {
 		logger.Println("mininum size of GossipNumber is 2. set default value [2]")
 		cfg.GossipNumber = 2
 	}
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
 	filter, err := newFilter(cfg.FilterWithStorage)
 	if err != nil {
 		return nil, err
