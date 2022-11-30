@@ -13,8 +13,9 @@ const (
 // propagator is a data structure required for peers to use to
 // propagate. propagator manages new messages to propagate to
 // other peers; determine whether the message is received or not.
-// If it is a new message, it is stored in cache and registered
-// in filter. Ignore messages that have already been received.
+// When a new message is received, it is stored in cache and
+// registered in filter. Ignore messages that have already been
+// received.
 type propagator struct {
 	c *lru.Cache // TODO: temp impl. Need impl MFU
 	f filter
