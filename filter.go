@@ -1,8 +1,7 @@
 package gogossip
 
 import (
-	"errors"
-
+	"github.com/bits-and-blooms/bloom/v3"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -26,11 +25,10 @@ type filter interface {
 
 func newFilter(filterWithStorage string) (filter, error) {
 	if filterWithStorage == "" {
-		// bloom filter
+		return newMemoryFilter()
 	} else {
 		return newStorageFilter(filterWithStorage)
 	}
-	return nil, errors.New("non")
 }
 
 // level db
@@ -61,8 +59,23 @@ func (s *storageFilter) Has(key []byte) bool {
 func (*storageFilter) Mod() string { return "LevelDB" }
 
 // bloom filter
+// TODO(dbadoy): Need logic to reset the filter when the false
+// positive rate reaches a certain value.
 type memoryFilter struct {
-	//
+	f *bloom.BloomFilter
+}
+
+func newMemoryFilter() (*memoryFilter, error) {
+	return &memoryFilter{bloom.NewWithEstimates(1000000, 0.001)}, nil
+}
+
+func (m *memoryFilter) Put(key []byte) error {
+	m.f.Add(key)
+	return nil
+}
+
+func (m *memoryFilter) Has(key []byte) bool {
+	return m.f.Test(key)
 }
 
 func (*memoryFilter) Mod() string { return "BloomFilter" }
