@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	// If the value is nil, it means a memory filter. Set the
-	// path to save the data if to use the storage filter,
+	// FilterWithStorage is the filter option variable. If the
+	// value is nil, it means a memory filter. Set the path to
+	// save the data if to use the storage filter.
 	FilterWithStorage string
 
 	// GossipNumber means the number of peers to make pull
