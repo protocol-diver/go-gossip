@@ -13,13 +13,18 @@ import (
 // is restarted. Memory filter can be used if you are not
 // very sensitive to duplicate messages.
 type filter interface {
-	// Registers received messages in filter. Only need to enter
-	// the key of the received message in the Put parameter. The
-	// corresponding Value is stored as nil (only check if it has
-	// been received).
+	// Put registers received messages in filter. Only need to
+	// enter the key of the received message in the Put parameter.
+	// The corresponding Value is stored as nil (only check if it
+	// has been received).
 	Put(key []byte) error
 
+	// Has checks if that key exists in filter and return whether
+	// or not.
 	Has(key []byte) bool
+
+	// Mod is simply a method for logging. It should return which
+	// filter implementation it is.
 	Mod() string
 }
 
