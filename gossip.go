@@ -60,7 +60,7 @@ func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Printf("configured, FilterMod: %s, GossipNumber: %d, EncryptType: %s\n", filter.Mod(), cfg.GossipNumber, cfg.EncType.String())
+	logger.Printf("configured, FilterMod: %s, GossipNumber: %d, EncryptType: %s\n", filter.Kind(), cfg.GossipNumber, cfg.EncType.String())
 
 	propagator, err := newPropagator(filter)
 	if err != nil {
