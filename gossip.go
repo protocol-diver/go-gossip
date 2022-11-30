@@ -78,19 +78,22 @@ func (g *Gossiper) Start() {
 	atomic.StoreUint32(&g.run, 1)
 }
 
-// Surface to application for starts gossip.
+// Push is a method for surface to application for starts
+// gossip. It's limits requests to prevent abnormal propagation
+// when more requests than cacheSize are received.
 func (g *Gossiper) Push(buf []byte) error {
 	if len(buf) > actualPayloadSize {
 		return errors.New("too big")
 	}
 	if g.messages.size() > cacheSize {
-		return errors.New("too many push")
+		return errors.New("too many requests")
 	}
 	g.push(idGenerator(), buf, false)
 	return nil
 }
 
-// Surface to application for send newly messages.
+// MessagePipe is a method for surface to application for send
+// newly messages.
 func (g *Gossiper) MessagePipe() chan []byte {
 	return g.pipe
 }
@@ -101,7 +104,6 @@ func (g *Gossiper) Size() int {
 
 func (g *Gossiper) readLoop() {
 	for {
-		// Temprary packet limit. Need basis.
 		buf := make([]byte, maxPacketSize)
 		n, sender, err := g.transport.ReadFromUDP(buf)
 		if err != nil {
@@ -109,7 +111,6 @@ func (g *Gossiper) readLoop() {
 			continue
 		}
 
-		// Slice actual data.
 		r := buf[:n]
 		go g.handler(r, sender)
 	}
@@ -142,7 +143,7 @@ func (g *Gossiper) push(key [8]byte, value []byte, remote bool) {
 	}
 }
 
-// Select random peers.
+// selectRandomPeers selects random peers.
 func (g *Gossiper) selectRandomPeers(n int) []string {
 	peers := g.discovery.Gossipiers()
 	if len(peers) <= n {
