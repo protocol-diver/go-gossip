@@ -30,7 +30,7 @@ type Gossiper struct {
 	registry  Registry
 	transport Transport
 
-	messages *broadcast
+	messages *propagator
 	pipe     chan []byte
 }
 
@@ -54,7 +54,7 @@ func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 	}
 	logger.Printf("configured, FilterMod: %s, GossipNumber: %d, EncryptType: %s\n", filter.Mod(), cfg.GossipNumber, cfg.EncType.String())
 
-	broadcast, err := newBroadcast(filter)
+	propagator, err := newPropagator(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 		logger:    logger,
 		registry:  reg,
 		transport: transport,
-		messages:  broadcast,
+		messages:  propagator,
 		pipe:      make(chan []byte, 4096),
 	}
 	return gossiper, nil
