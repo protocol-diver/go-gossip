@@ -61,6 +61,7 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 			if size >= actualPayloadSize {
 				r.Keys = r.Keys[:len(r.Keys)-1]
 				r.Values = r.Values[:len(r.Values)-1]
+				i--
 				break
 			}
 		}
