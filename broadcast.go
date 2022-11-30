@@ -1,109 +1,80 @@
 package gogossip
 
 import (
-	"sync"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
-	// timeout stands for deletion time of message.
-	// pull count per message = timeout * pullInterval
-	//
-	// message is not deleted exactly every timeout reached.
-	// Since the delete loop also runs once every timeout.
-	// So the minimum is timeout, the maximum is 2*timeout.
-	timeout = 25 * time.Second
+	cacheSize = 512
 )
 
-// messages stores recent gossip messages.
-// It also stores a deadline for deletion from memory.
-type message struct {
-	value    []byte
-	deadline time.Time
-
-	// Marking for the requestor. Exclude if the requestor has already taken it.
-	// If don't check it here, occur a unnecessary response.
-	touched map[string]bool
-}
-
-// broadcast manages the message in the form of a map.
-// The message exist here means a message to be propagated to
-// neighboring nodes.
+// broadcast is a data structure required for peers to use
+// broadcast. It manages new messages to propagate to other
+// peers. determines whether a message is received when it
+// is received, and ignores it if it has already been
+// received.
 type broadcast struct {
-	mu sync.Mutex
-	m  map[[8]byte]message
+	c *lru.Cache // TODO: temp impl. Need impl MFU
+	f filter
 }
 
-// add is a method for storing messages in broadcast.
-// If it already exists, it is skipped, and if it does not exist,
-// it is added by setting a deadline.
+func newBroadcast(f filter) (*broadcast, error) {
+	cache, err := lru.New(cacheSize)
+	if err != nil {
+		return nil, err
+	}
+	return &broadcast{
+		c: cache,
+		f: f,
+	}, nil
+}
+
 func (b *broadcast) add(key [8]byte, value []byte) bool {
-	b.mu.Lock()
-	if _, ok := b.m[key]; ok {
-		// This message already received.
-		b.mu.Unlock()
+	// It is skipped if the corresponding key exists
+	// in the filter or cache.
+	//
+	// hold mu?
+	if has := b.f.Has(key[:]); has {
 		return false
 	}
-	b.m[key] = message{
-		value:    value,
-		deadline: time.Now().Add(timeout),
-		touched:  make(map[string]bool),
+	if contain := b.c.Contains(key); contain {
+		return false
 	}
-	b.mu.Unlock()
+
+	// Register in the filter and saving the value in the cache.
+	b.c.Add(key, value)
+	if err := b.f.Put(key[:]); err != nil {
+		panic(err)
+	}
 
 	return true
 }
 
-// keys returns all keys that exist in the map in broadcast.
-//
-// The caller must hold b.mu.
-func (b *broadcast) keys() [][8]byte {
-	keys := make([][8]byte, 0, len(b.m))
-	for k := range b.m {
-		keys = append(keys, k)
+func (b *broadcast) items() ([][8]byte, [][]byte) {
+	kl := make([][8]byte, 0)
+	vl := make([][]byte, 0)
+
+	keys := b.c.Keys()
+	for _, key := range keys {
+		if value, ok := b.c.Get(key); ok {
+			kl = append(kl, key.([8]byte))
+			vl = append(vl, value.([]byte))
+
+			// The data in the cache is removed after performing
+			// pullInterval 5 times. (Based on Best Effort that
+			// it would have spread evenly after 5 times of
+			// propagation)
+			go func(k interface{}) {
+				time.Sleep(5 * pullInterval)
+				b.c.Remove(k)
+			}(key)
+		}
 	}
-	return keys
+	return kl, vl
 }
 
-// itemsWithTouch gets all messages that exist in B. In the process,
-// messages already taken by the requester are excluded. It also marks
-// the returned message(to exclude next request).
-func (b *broadcast) itemsWithTouch(addr string) ([][8]byte, [][]byte) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	keys := b.keys()
-
-	rk := make([][8]byte, 0, len(keys))
-	rv := make([][]byte, 0, len(keys))
-
-	for k, v := range b.m {
-		if !v.touched[addr] {
-			rk = append(rk, k)
-			rv = append(rv, v.value)
-		}
-		v.touched[addr] = true
-	}
-	return rk, rv
-}
-
-// timeoutLoop periodically finds and deletes message that has expired in broadcast.
-func (b *broadcast) timeoutLoop() {
-	ticker := time.NewTicker(timeout)
-	defer ticker.Stop()
-	for {
-		<-ticker.C
-
-		now := time.Now()
-		b.mu.Lock()
-		keys := b.keys()
-		for _, key := range keys {
-			if _, ok := b.m[key]; !ok {
-				continue
-			}
-			if b.m[key].deadline.Before(now) {
-				delete(b.m, key)
-			}
-		}
-		b.mu.Unlock()
-	}
+func (b *broadcast) size() int {
+	return b.c.Len()
 }

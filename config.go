@@ -2,12 +2,23 @@ package gogossip
 
 import (
 	"fmt"
+	"io/fs"
 )
 
 type Config struct {
+	// FilterWithStorage is the filter option variable. If the
+	// value is nil, it means a memory filter. Set the path to
+	// save the data if to use the storage filter.
+	FilterWithStorage string
+
+	// GossipNumber means the number of peers to make pull
+	// requests per pullInterval. This number must be greater
+	// than 2, and if set to greater than the total number of
+	// existing peers, it means broadcasting.
 	GossipNumber int
-	EncType      EncryptType
-	Passphrase   string
+
+	EncType    EncryptType
+	Passphrase string
 }
 
 func DefaultConfig() *Config {
@@ -24,6 +35,11 @@ func (c *Config) validate() error {
 	}
 	if c.EncType != NON_SECURE_TYPE && c.Passphrase == "" {
 		return fmt.Errorf("Passphrase required")
+	}
+	if c.FilterWithStorage != "" {
+		if !fs.ValidPath(c.FilterWithStorage) {
+			return fmt.Errorf("invalid FilterWithStorage '%s' is not a file path", c.FilterWithStorage)
+		}
 	}
 	return nil
 }

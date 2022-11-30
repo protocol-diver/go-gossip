@@ -1,6 +1,7 @@
 package gogossip
 
 import (
+	"errors"
 	"log"
 	"math/rand"
 	"os"
@@ -10,9 +11,15 @@ import (
 
 const (
 	//
-	pullInterval = 200 * time.Millisecond
-	//
-	actualDataSize = 512
+	pullInterval = 100 * time.Millisecond
+
+	// 2^18(65535) - ip header(20) - udp header(8)
+	// Packet fragmentation is not considered.
+	maxPacketSize = 65507
+
+	// actualPayloadSize is the result of calculating the overhead
+	// in the process of marshaling the PullResponse.
+	actualPayloadSize = maxPacketSize - 61440
 )
 
 type Gossiper struct {
@@ -23,7 +30,7 @@ type Gossiper struct {
 	registry  Registry
 	transport Transport
 
-	messages broadcast
+	messages *broadcast
 	pipe     chan []byte
 }
 
@@ -41,17 +48,24 @@ func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 		logger.Println("mininum size of GossipNumber is 2. set default value [2]")
 		cfg.GossipNumber = 2
 	}
-	logger.Printf("configured, GossipNumber: %d, EncryptType: %s\n", cfg.GossipNumber, cfg.EncType.String())
+	filter, err := newFilter(cfg.FilterWithStorage)
+	if err != nil {
+		return nil, err
+	}
+	logger.Printf("configured, FilterMod: %s, GossipNumber: %d, EncryptType: %s\n", filter.Mod(), cfg.GossipNumber, cfg.EncType.String())
+
+	broadcast, err := newBroadcast(filter)
+	if err != nil {
+		return nil, err
+	}
 
 	gossiper := &Gossiper{
 		cfg:       cfg,
 		logger:    logger,
 		registry:  reg,
 		transport: transport,
-		messages: broadcast{
-			m: make(map[[8]byte]message),
-		},
-		pipe: make(chan []byte, 4096),
+		messages:  broadcast,
+		pipe:      make(chan []byte, 4096),
 	}
 	return gossiper, nil
 }
@@ -60,33 +74,44 @@ func (g *Gossiper) Start() {
 	if atomic.LoadUint32(&g.run) == 1 {
 		return
 	}
-	go g.messages.timeoutLoop()
 	go g.readLoop()
 	go g.pullLoop()
 	atomic.StoreUint32(&g.run, 1)
 }
 
-// Surface to application for starts gossip.
-func (g *Gossiper) Push(buf []byte) {
+// Push is a method for surface to application for starts
+// gossip. It's limits requests to prevent abnormal propagation
+// when more requests than cacheSize are received.
+func (g *Gossiper) Push(buf []byte) error {
+	if len(buf) > actualPayloadSize {
+		return errors.New("too big")
+	}
+	if g.messages.size() > cacheSize {
+		return errors.New("too many requests")
+	}
 	g.push(idGenerator(), buf, false)
+	return nil
 }
 
-// Surface to application for send newly messages.
+// MessagePipe is a method for surface to application for send
+// newly messages.
 func (g *Gossiper) MessagePipe() chan []byte {
 	return g.pipe
 }
 
+func (g *Gossiper) Pending() int {
+	return g.messages.size()
+}
+
 func (g *Gossiper) readLoop() {
 	for {
-		// Temprary packet limit. Need basis.
-		buf := make([]byte, 8192)
+		buf := make([]byte, maxPacketSize)
 		n, sender, err := g.transport.ReadFromUDP(buf)
 		if err != nil {
 			g.logger.Printf("readLoop: read UDP packet failure, %v\n", err)
 			continue
 		}
 
-		// Slice actual data.
 		r := buf[:n]
 		go g.handler(r, sender)
 	}
@@ -119,7 +144,7 @@ func (g *Gossiper) push(key [8]byte, value []byte, remote bool) {
 	}
 }
 
-// Select random peers.
+// selectRandomPeers selects random peers.
 func (g *Gossiper) selectRandomPeers(n int) []string {
 	peers := g.registry.Gossipiers()
 	if len(peers) <= n {

@@ -34,7 +34,7 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 // If it is split into bytes after marshaling, the entire data will be lost if lost.
 // Transmit the split data into packets.
 func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Packet {
-	kl, vl := g.messages.itemsWithTouch(sender.String())
+	kl, vl := g.messages.items()
 	if len(kl) != len(vl) {
 		panic("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
 	}
@@ -46,11 +46,10 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 
 	i := 0
 	for i < len(kl) {
-		prealloc := actualDataSize / (8 + binary.Size(vl[i]))
 		r := &PullResponse{
 			to:     sender,
-			Keys:   make([][8]byte, 0, prealloc),
-			Values: make([][]byte, 0, prealloc),
+			Keys:   make([][8]byte, 0),
+			Values: make([][]byte, 0),
 		}
 
 		size := 0
@@ -59,7 +58,9 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 			r.Values = append(r.Values, vl[i])
 
 			size += binary.Size(kl[i]) + binary.Size(vl[i])
-			if size >= actualDataSize {
+			if size >= actualPayloadSize {
+				r.Keys = r.Keys[:len(r.Keys)-1]
+				r.Values = r.Values[:len(r.Values)-1]
 				break
 			}
 		}
