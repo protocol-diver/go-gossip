@@ -14,6 +14,7 @@ const (
 	pullInterval = 100 * time.Millisecond
 
 	// 2^18(65535) - ip header(20) - udp header(8)
+	// Packet fragmentation is not considered.
 	maxPacketSize = 65507
 
 	// actualPayloadSize is the result of calculating the overhead
@@ -98,7 +99,7 @@ func (g *Gossiper) MessagePipe() chan []byte {
 	return g.pipe
 }
 
-func (g *Gossiper) Size() int {
+func (g *Gossiper) Pending() int {
 	return g.messages.size()
 }
 
