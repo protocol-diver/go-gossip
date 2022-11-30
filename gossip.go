@@ -22,6 +22,13 @@ const (
 	actualPayloadSize = maxPacketSize - 61440
 )
 
+var (
+	// If call 'Push' and it returns this error, you are making
+	// too many requests. cache is emptied after a certain amount
+	// of time, so if you try again, it will be processed normally.
+	ErrNoSpaceCache = errors.New("too many requests")
+)
+
 type Gossiper struct {
 	run    uint32
 	cfg    *Config
@@ -87,7 +94,7 @@ func (g *Gossiper) Push(buf []byte) error {
 		return errors.New("too big")
 	}
 	if g.messages.size() > cacheSize {
-		return errors.New("too many requests")
+		return ErrNoSpaceCache
 	}
 	g.push(idGenerator(), buf, false)
 	return nil
