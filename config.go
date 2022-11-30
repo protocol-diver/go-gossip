@@ -2,6 +2,7 @@ package gogossip
 
 import (
 	"fmt"
+	"io/fs"
 )
 
 type Config struct {
@@ -33,6 +34,11 @@ func (c *Config) validate() error {
 	}
 	if c.EncType != NON_SECURE_TYPE && c.Passphrase == "" {
 		return fmt.Errorf("Passphrase required")
+	}
+	if c.FilterWithStorage != "" {
+		if !fs.ValidPath(c.FilterWithStorage) {
+			return fmt.Errorf("invalid FilterWithStorage '%s' is not a file path", c.FilterWithStorage)
+		}
 	}
 	return nil
 }
