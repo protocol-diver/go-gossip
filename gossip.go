@@ -30,7 +30,7 @@ const (
 	//
 	// 	Appending []byte (len: 5000) 1000 times.
 	// 	1. json - 6671010
-	// 	2. gob  - 515061
+	// 	2. gob  - 5003061
 	actualPayloadSize = maxPacketSize - 61440
 )
 
