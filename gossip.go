@@ -19,6 +19,18 @@ const (
 
 	// actualPayloadSize is the result of calculating the overhead
 	// in the process of marshaling the PullResponse.
+	//
+	// TODO(dbadoy): Figure out another serialization method(e.g.
+	// gob). The overhead of serializing two dimensional array via
+	// json is too much.
+	//
+	// 	type t struct {
+	//		Data [][]byte
+	// 	}
+	//
+	// 	Appending []byte (len: 5000) 1000 times.
+	// 	1. json - 6671010
+	// 	2. gob  - 515061
 	actualPayloadSize = maxPacketSize - 61440
 )
 
