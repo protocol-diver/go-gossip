@@ -19,6 +19,18 @@ const (
 
 	// actualPayloadSize is the result of calculating the overhead
 	// in the process of marshaling the PullResponse.
+	//
+	// TODO(dbadoy): Figure out another serialization method(e.g.
+	// gob). The overhead of serializing two dimensional array via
+	// json is too much.
+	//
+	// 	type t struct {
+	//		Data [][]byte
+	// 	}
+	//
+	// 	Appending []byte (len: 5000) 1000 times.
+	// 	1. json - 6671010
+	// 	2. gob  - 5003061
 	actualPayloadSize = maxPacketSize - 61440
 )
 
@@ -60,7 +72,7 @@ func New(reg Registry, transport Transport, cfg *Config) (*Gossiper, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Printf("configured, FilterMod: %s, GossipNumber: %d, EncryptType: %s\n", filter.Mod(), cfg.GossipNumber, cfg.EncType.String())
+	logger.Printf("configured, Filter: %s, GossipNumber: %d, EncryptType: %s\n", filter.Kind(), cfg.GossipNumber, cfg.EncType.String())
 
 	propagator, err := newPropagator(filter)
 	if err != nil {
@@ -121,7 +133,7 @@ func (g *Gossiper) readLoop() {
 		}
 
 		r := buf[:n]
-		go g.handler(r, sender)
+		g.handler(r, sender)
 	}
 }
 

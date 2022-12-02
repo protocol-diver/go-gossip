@@ -52,18 +52,16 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 			Values: make([][]byte, 0),
 		}
 
-		size := 0
+		accum := 0
 		for ; i < len(kl); i++ {
-			r.Keys = append(r.Keys, kl[i])
-			r.Values = append(r.Values, vl[i])
-
-			size += binary.Size(kl[i]) + binary.Size(vl[i])
-			if size >= actualPayloadSize {
-				r.Keys = r.Keys[:len(r.Keys)-1]
-				r.Values = r.Values[:len(r.Values)-1]
-				i--
+			prop := binary.Size(kl[i]) + binary.Size(vl[i])
+			if accum+prop >= actualPayloadSize {
 				break
 			}
+
+			r.Keys = append(r.Keys, kl[i])
+			r.Values = append(r.Values, vl[i])
+			accum += prop
 		}
 		packets = append(packets, r)
 	}

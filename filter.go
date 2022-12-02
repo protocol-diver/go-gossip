@@ -23,9 +23,9 @@ type filter interface {
 	// or not.
 	Has(key []byte) bool
 
-	// Mod is simply method for logging. It should return which
+	// Kind is simply method for logging. It should return which
 	// filter implementation it is.
-	Mod() string
+	Kind() string
 }
 
 func newFilter(filterWithStorage string) (filter, error) {
@@ -61,7 +61,7 @@ func (s *storageFilter) Has(key []byte) bool {
 	return has
 }
 
-func (*storageFilter) Mod() string { return "LevelDB" }
+func (*storageFilter) Kind() string { return "LevelDB" }
 
 // bloom filter
 // TODO(dbadoy): Need logic to reset the filter when the false
@@ -83,4 +83,4 @@ func (m *memoryFilter) Has(key []byte) bool {
 	return m.f.Test(key)
 }
 
-func (*memoryFilter) Mod() string { return "BloomFilter" }
+func (*memoryFilter) Kind() string { return "BloomFilter" }
