@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	// Assign it to a variable for testing.
 	errInvalidGossipNumber = errors.New("invalid GossipNumber")
 	errInvalidFilePath     = errors.New("invalid FilterWithStorage")
 	errInvalidEncryptType  = errors.New("invalid EncryptType")
