@@ -173,25 +173,20 @@ func (g *Gossiper) selectRandomPeers(n int) []string {
 
 	var (
 		random   = rand.New(rand.NewSource(time.Now().UnixNano()))
-		indices  = make([]int, 0, n)
-		selected = make([]string, 0, n)
+		result   = make([]string, 0, n)
+		selected = make(map[string]struct{})
 	)
 
-	// Avoid duplicate selection.
-	for r := random.Intn(n); len(indices) != n; r = random.Intn(n) {
-		for _, v := range indices {
-			if v == r {
-				continue
-			}
+	for r := random.Intn(n); len(result) != n; r = random.Intn(n) {
+		key := peers[r]
+		if _, ok := selected[key]; ok {
+			continue
 		}
-		indices = append(indices, r)
+		selected[key] = struct{}{}
+		result = append(result, key)
 	}
 
-	for i := 0; i < n; i++ {
-		selected = append(selected, peers[indices[i]])
-	}
-
-	return selected
+	return result
 }
 
 func (g *Gossiper) send(packet Packet, encType EncryptType) (int, error) {
