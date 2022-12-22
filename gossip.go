@@ -13,9 +13,8 @@ const (
 	//
 	pullInterval = 100 * time.Millisecond
 
-	// 2^18(65535) - ip header(20) - udp header(8)
 	// Packet fragmentation is not considered.
-	maxPacketSize = 65507
+	maxPacketSize = 65535
 
 	// actualPayloadSize is the result of calculating the overhead
 	// in the process of marshaling the PullResponse.
