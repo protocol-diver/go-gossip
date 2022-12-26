@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	cacheSize =  32 << 20 // 32 MiB
+	cacheSize = 32 << 20 // 32 MiB
 )
 
 // propagator is a data structure required for peers to use to
