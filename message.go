@@ -17,17 +17,17 @@ type Packet interface {
 }
 
 const (
-	PullRequestType  = 0x01
-	PullResponseType = 0x02
+	pullRequestType  = 0x01
+	pullResponseType = 0x02
 )
 
-type PacketType byte
+type packetType byte
 
-func (p PacketType) String() string {
+func (p packetType) String() string {
 	switch p {
-	case PullRequestType:
+	case pullRequestType:
 		return "PullRequest"
-	case PullResponseType:
+	case pullResponseType:
 		return "PullResponse"
 	}
 	return ""
@@ -63,10 +63,10 @@ func unmarshalWithDecryption(buf []byte, passphrase string) (*label, []byte, err
 	return label, plain, err
 }
 
-func (req *PullRequest) Kind() byte       { return PullRequestType }
+func (req *PullRequest) Kind() byte       { return pullRequestType }
 func (req *PullRequest) To() *net.UDPAddr { panic("not supported") }
 
-func (res *PullResponse) Kind() byte { return PullResponseType }
+func (res *PullResponse) Kind() byte { return pullResponseType }
 func (res *PullResponse) To() *net.UDPAddr {
 	if res.to == nil {
 		panic("'to' is empty (hint: maybe you are the recipient)")

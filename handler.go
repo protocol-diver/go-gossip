@@ -22,9 +22,9 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	}()
 
 	switch label.packetType {
-	case PullRequestType:
+	case pullRequestType:
 		packets = g.pullRequestHandle(plain, sender)
-	case PullResponseType:
+	case pullResponseType:
 		g.pullResponseHandle(plain)
 	default:
 		g.logger.Printf("hander: invalid packet detectd, type: %d (<-- %v)\n", label.packetType, sender)

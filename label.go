@@ -16,7 +16,7 @@ var (
 var labelTotalSize = binary.Size(label{})
 
 type label struct {
-	packetType  PacketType
+	packetType  packetType
 	encryptType EncryptType
 	// tempSize    [4]byte
 }
@@ -47,7 +47,7 @@ func bytesToLabel(buf []byte) *label {
 	// copy(tempSize[:], buf[2:4])
 
 	return &label{
-		PacketType(buf[0]), EncryptType(buf[1]), // tempSize,
+		packetType(buf[0]), EncryptType(buf[1]), // tempSize,
 	}
 }
 
