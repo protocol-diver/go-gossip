@@ -11,7 +11,7 @@ import (
 
 const (
 	//
-	pullInterval = 100 * time.Millisecond
+	pullInterval = 200 * time.Millisecond
 
 	// Packet fragmentation is not considered.
 	maxPacketSize = 65535
