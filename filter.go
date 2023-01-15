@@ -1,7 +1,7 @@
 package gogossip
 
 import (
-	"github.com/bits-and-blooms/bloom/v3"
+	"github.com/VictoriaMetrics/fastcache"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -63,24 +63,22 @@ func (s *storageFilter) Has(key []byte) bool {
 
 func (*storageFilter) Kind() string { return "LevelDB" }
 
-// bloom filter
-// TODO(dbadoy): Need logic to reset the filter when the false
-// positive rate reaches a certain value.
 type memoryFilter struct {
-	f *bloom.BloomFilter
+	f *fastcache.Cache
 }
 
 func newMemoryFilter() (*memoryFilter, error) {
-	return &memoryFilter{bloom.NewWithEstimates(1000000, 0.001)}, nil
+	// 32 MiB
+	return &memoryFilter{fastcache.New(32 << 20)}, nil
 }
 
 func (m *memoryFilter) Put(key []byte) error {
-	m.f.Add(key)
+	m.f.Set(key, nil)
 	return nil
 }
 
 func (m *memoryFilter) Has(key []byte) bool {
-	return m.f.Test(key)
+	return m.f.Has(key)
 }
 
-func (*memoryFilter) Kind() string { return "BloomFilter" }
+func (*memoryFilter) Kind() string { return "FastCache" }
