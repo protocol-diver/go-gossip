@@ -25,12 +25,12 @@ func TestRouteFilter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if td.want != filter.Mod() {
-			t.Fatalf("RouteFilter test failure, want: %s, got: %s", td.want, filter.Mod())
+		if td.want != filter.Kind() {
+			t.Fatalf("RouteFilter test failure, want: %s, got: %s", td.want, filter.Kind())
 		}
 
 		// remove the directory if filter mod is storage.
-		if filter.Mod() == "LevelDB" {
+		if filter.Kind() == "LevelDB" {
 			os.RemoveAll(td.filterWithStorage)
 		}
 	}
