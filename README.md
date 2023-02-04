@@ -67,7 +67,7 @@ Packet type (1 byte) <br>
 <b>PullResponse</b> - Stores the received message in memory. Messages that have already been received will be ignored. <br>
 
 ### Filter and Propagator
-The concept of filter is used to distinguish between 'already received messages' and 'newly received messages'. <br>
+Filter is used to distinguish between 'already received messages' and 'newly received messages'. <br>
 To determine this 'accurately' in an asynchronous network environment, all history must be stored. Therefore, if you are sensitive to receiving duplicate data, store the history permanently (currently implemented as LevelDB). If it's not very sensitive, store it in a large enough memory cache. <br>
 Propagator classifies newly received messages using filters and manages a cache to propagate them to other nodes. Actually, even if all messages are propagated, nodes use filters to store only those messages that have not been received. However, we exclude and propagate messages that are determined to have propagated 'enough' to reduce network congestion. <br>
 
