@@ -17,7 +17,8 @@ It's forcus on gossip through relying on discovery layer from outside.
 
 
 # Layer
-<< LAYER IMAGE >> <br><br>
+![image](https://user-images.githubusercontent.com/72970043/228450691-ecb565d4-ea60-4f91-92d0-a35dd0b99510.png)
+
 ## Registry layer
 Registry layer serves as the managed peer table. That could be static peer table, also could dynamic peer table(like DHT). <br>
 The required(MUST) method is Gossipiers. Gossipiers is used to select random peers to send gossip messages to. <br>
