@@ -47,8 +47,8 @@ func newCipher(kind EncryptType) Cipher {
 	panic("not supported encryption type")
 }
 
-func encryptPacket(encType EncryptType, passphrase string, packet Packet) ([]byte, error) {
-	b, err := json.Marshal(packet)
+func encryptPacket(encType EncryptType, passphrase string, p packet) ([]byte, error) {
+	b, err := json.Marshal(p)
 	if err != nil {
 		return nil, err
 	}

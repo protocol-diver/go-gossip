@@ -146,7 +146,7 @@ func (g *Gossiper) pullLoop() {
 		//
 		// Since it is the starting point of the gossip protocol.
 		// So it follows the encType of this peer.
-		p, err := marshalWithEncryption(&PullRequest{}, g.cfg.EncType, g.cfg.Passphrase)
+		p, err := marshalWithEncryption(&pullRequest{}, g.cfg.EncType, g.cfg.Passphrase)
 		if err != nil {
 			g.logger.Printf("pullLoop: marshalPacketWithEncryption failure, %v\n", err)
 			continue
@@ -188,10 +188,10 @@ func (g *Gossiper) selectRandomPeers(n int) []string {
 	return result
 }
 
-func (g *Gossiper) send(packet Packet, encType EncryptType) (int, error) {
-	b, err := marshalWithEncryption(packet, encType, g.cfg.Passphrase)
+func (g *Gossiper) send(p packet, encType EncryptType) (int, error) {
+	b, err := marshalWithEncryption(p, encType, g.cfg.Passphrase)
 	if err != nil {
 		return 0, err
 	}
-	return g.transport.WriteToUDP(b, packet.To())
+	return g.transport.WriteToUDP(b, p.To())
 }

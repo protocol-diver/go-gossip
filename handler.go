@@ -14,10 +14,10 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 	}
 
 	// Packet to use when we need to send a response.
-	var packets []Packet
+	var packets []packet
 	defer func() {
-		for _, packet := range packets {
-			g.send(packet, label.encryptType)
+		for _, p := range packets {
+			g.send(p, label.encryptType)
 		}
 	}()
 
@@ -33,7 +33,7 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 
 // If it is split into bytes after marshaling, the entire data will be lost if lost.
 // Transmit the split data into packets.
-func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Packet {
+func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []packet {
 	kl, vl := g.messages.items()
 	if len(kl) != len(vl) {
 		panic("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
@@ -42,11 +42,11 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 		return nil
 	}
 
-	var packets []Packet
+	var packets []packet
 
 	i := 0
 	for i < len(kl) {
-		r := &PullResponse{
+		r := &pullResponse{
 			to:     sender,
 			Keys:   make([][8]byte, 0),
 			Values: make([][]byte, 0),
@@ -70,7 +70,7 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []Pack
 }
 
 func (g *Gossiper) pullResponseHandle(payload []byte) {
-	var msg PullResponse
+	var msg pullResponse
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		g.logger.Printf("pullResponseHandle: Unmarshal failure, %v\n", err)
 		return

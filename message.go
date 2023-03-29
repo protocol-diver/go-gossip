@@ -4,10 +4,10 @@ import (
 	"net"
 )
 
-type Packet interface {
+type packet interface {
 	Kind() byte
 
-	// Packet handler returns packet list if need respond. and basically
+	// 'packet' handler returns packet list if need respond. and basically
 	// it is used to divide and transmit a large response. Add 'to' to
 	// the packet itself, as there may be times when need to send a
 	// response to multiple peers later.
@@ -34,21 +34,21 @@ func (p packetType) String() string {
 }
 
 type (
-	PullRequest struct {
+	pullRequest struct {
 	}
-	PullResponse struct {
+	pullResponse struct {
 		to     *net.UDPAddr
 		Keys   [][8]byte
 		Values [][]byte
 	}
 )
 
-func marshalWithEncryption(packet Packet, encType EncryptType, passphrase string) ([]byte, error) {
-	cipher, err := encryptPacket(encType, passphrase, packet)
+func marshalWithEncryption(p packet, encType EncryptType, passphrase string) ([]byte, error) {
+	cipher, err := encryptPacket(encType, passphrase, p)
 	if err != nil {
 		return nil, err
 	}
-	return bytesToLabel([]byte{packet.Kind(), byte(encType)}).combine(cipher)
+	return bytesToLabel([]byte{p.Kind(), byte(encType)}).combine(cipher)
 }
 
 func unmarshalWithDecryption(buf []byte, passphrase string) (*label, []byte, error) {
@@ -63,11 +63,11 @@ func unmarshalWithDecryption(buf []byte, passphrase string) (*label, []byte, err
 	return label, plain, err
 }
 
-func (req *PullRequest) Kind() byte       { return pullRequestType }
-func (req *PullRequest) To() *net.UDPAddr { panic("not supported") }
+func (req *pullRequest) Kind() byte       { return pullRequestType }
+func (req *pullRequest) To() *net.UDPAddr { panic("not supported") }
 
-func (res *PullResponse) Kind() byte { return pullResponseType }
-func (res *PullResponse) To() *net.UDPAddr {
+func (res *pullResponse) Kind() byte { return pullResponseType }
+func (res *pullResponse) To() *net.UDPAddr {
 	if res.to == nil {
 		panic("'to' is empty (hint: maybe you are the recipient)")
 	}
