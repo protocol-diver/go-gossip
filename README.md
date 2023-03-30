@@ -40,7 +40,7 @@ Gossip layer serves core features that propagating gossip messages and relay dat
 For serve that, it's detect packet and handles them correctly to the packet types. <br>
 There is three tasks what this layer have to do. <br>
 
-1. The node should be able to be a gossip culprit. Provide surface interface for application programs to push gossip messages.
+1. The node should be able to be a source of gossip. Provide surface interface for application programs to push gossip messages.
 2. Handles them correctly to the packet types.
 3. Detects is the gossip message already exist in memory and relay the gossip messages to the application if necessary.
 
