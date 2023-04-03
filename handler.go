@@ -23,9 +23,9 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 
 	switch label.packetType {
 	case pullRequestType:
-		packets = g.pullRequestHandle(plain, sender)
+		packets = g.handlePullRequest(plain, sender)
 	case pullResponseType:
-		g.pullResponseHandle(plain)
+		g.handlePullResponse(plain)
 	default:
 		g.logger.Printf("hander: invalid packet detectd, type: %d (<-- %v)\n", label.packetType, sender)
 	}
@@ -33,10 +33,10 @@ func (g *Gossiper) handler(buf []byte, sender *net.UDPAddr) {
 
 // If it is split into bytes after marshaling, the entire data will be lost if lost.
 // Transmit the split data into packets.
-func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []packet {
+func (g *Gossiper) handlePullRequest(payload []byte, sender *net.UDPAddr) []packet {
 	kl, vl := g.messages.items()
 	if len(kl) != len(vl) {
-		panic("pullRequestHandle: invalid protocol detected, different key value sizes in the packet")
+		panic("handlePullRequest: invalid protocol detected, different key value sizes in the packet")
 	}
 	if len(kl) == 0 {
 		return nil
@@ -69,14 +69,14 @@ func (g *Gossiper) pullRequestHandle(payload []byte, sender *net.UDPAddr) []pack
 	return packets
 }
 
-func (g *Gossiper) pullResponseHandle(payload []byte) {
+func (g *Gossiper) handlePullResponse(payload []byte) {
 	var msg pullResponse
 	if err := json.Unmarshal(payload, &msg); err != nil {
-		g.logger.Printf("pullResponseHandle: Unmarshal failure, %v\n", err)
+		g.logger.Printf("handlePullResponse: Unmarshal failure, %v\n", err)
 		return
 	}
 	if len(msg.Keys) != len(msg.Values) {
-		panic("pullResponseHandle: invalid protocol detected, different key value sizes in the packet")
+		panic("handlePullResponse: invalid protocol detected, different key value sizes in the packet")
 	}
 
 	for i := 0; i < len(msg.Keys); i++ {
